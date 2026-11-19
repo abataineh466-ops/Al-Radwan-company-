@@ -1,0 +1,8 @@
+{
+  "name": "R.B Law Firm | مكتب الرضوان للمحاماة",
+  "description": "مكتب الرضوان للمحاماة والاستشارات القانونية في إربد - شارع الثلاثين بجانب نادي الضباط. استشارات قانونية متخصصة، مساعد قانوني ذكي، وحجز مواعيد ودفع إلكتروني.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

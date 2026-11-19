@@ -8,8 +8,6 @@ import {
   Phone,
   Quote,
   Send,
-  ZoomIn,
-  ZoomOut,
 } from 'lucide-react';
 import type { Language, SpecialtyId } from '../types/legal';
 import {
@@ -30,9 +28,6 @@ export function TestimonialsAndContactSection({
   lang,
   onBookClick,
 }: TestimonialsAndContactSectionProps) {
-  const [mapZoom, setMapZoom] = useState(1);
-  const [selectedLandmark, setSelectedLandmark] = useState<'firm' | 'officers' | 'street30'>('firm');
-
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [specialtyId, setSpecialtyId] = useState<SpecialtyId>('civil');
@@ -166,176 +161,61 @@ export function TestimonialsAndContactSection({
                 </p>
               </div>
 
-              {/* Interactive Architectural Street Map + Exterior Photo Grid */}
+              {/* Real Interactive Google Maps Embed + Exterior Photo Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-stretch">
-                <div className="sm:col-span-2 rounded-2xl overflow-hidden border border-white/15 bg-[#121D3D] min-h-[210px]">
+                <div className="sm:col-span-2 rounded-2xl overflow-hidden border border-white/15 bg-[#121D3D] min-h-[240px]">
                   <img
                     src={ASSET_IMAGES.irbidOffice}
                     alt={
                       lang === 'ar'
-                        ? 'مبنى شركة الرضوان للتحكيم والمحاماة في إربد شارع الثلاثين'
-                        : 'Al-Radwan Arbitration & Law Firm building exterior in Irbid 30th Street'
+                        ? 'مبنى شركة الرضوان للتحكيم والمحاماة في إربد شارع الثلاثين - عمارة علاء الدين سنتر'
+                        : 'Al-Radwan Arbitration & Law Firm building exterior in Irbid 30th Street - Alaa Al-Din Center'
                     }
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
                   />
                 </div>
 
-                {/* Custom Interactive Street Map of Irbid 30th Street */}
+                {/* Real Interactive Google Maps Embed (Free iframe, No API Key) */}
                 <div className="sm:col-span-3 rounded-2xl overflow-hidden border border-white/15 bg-[#111B38] flex flex-col justify-between">
-                  <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-2">
+                  <div className="px-4 py-3 border-b border-white/10 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-xs font-semibold text-[#C5A059]">
                       <Navigation className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                      <span className="font-mono-data">32.5385° N, 35.8572° E</span>
+                      <span className="font-mono-data" dir="ltr">
+                        32.5517807° N, 35.8628263° E
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setMapZoom((z) => Math.max(0.9, Number((z - 0.15).toFixed(2))))}
-                        aria-label={lang === 'ar' ? 'تصغير الخريطة' : 'Zoom out map'}
-                        className="w-8 h-8 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer"
-                      >
-                        <ZoomOut className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMapZoom((z) => Math.min(1.45, Number((z + 0.15).toFixed(2))))}
-                        aria-label={lang === 'ar' ? 'تكبير الخريطة' : 'Zoom in map'}
-                        className="w-8 h-8 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer"
-                      >
-                        <ZoomIn className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <span className="text-[11px] font-medium text-slate-300 font-mono-data">
+                      {lang === 'ar' ? 'HV27+P3 إربد، الأردن' : 'HV27+P3 Irbid, Jordan'}
+                    </span>
                   </div>
 
-                  <div className="relative h-52 overflow-hidden bg-[#0E1730] flex items-center justify-center">
-                    <svg
-                      viewBox="0 0 400 220"
-                      className="w-full h-full transition-transform duration-200"
-                      style={{ transform: `scale(${mapZoom})` }}
-                      role="img"
-                      aria-label={
+                  <div className="relative h-60 flex-1 min-h-[230px] bg-[#0E1730]">
+                    <iframe
+                      title={
                         lang === 'ar'
-                          ? 'خريطة موقع شركة الرضوان في شارع الثلاثين بجانب نادي الضباط إربد'
-                          : 'Map showing Al-Radwan Arbitration & Law Firm on 30th Street next to Officers Club, Irbid'
+                          ? 'خريطة موقع شركة الرضوان في إربد - شارع الثلاثين - عمارة علاء الدين سنتر'
+                          : 'Google Map of Al-Radwan Law Firm — Irbid, 30th Street, Alaa Al-Din Center'
                       }
-                    >
-                      {/* Architectural city blocks */}
-                      <rect x="0" y="0" width="400" height="220" fill="#0E1730" />
-                      <g stroke="#1E2B4D" strokeWidth="1">
-                        <rect x="25" y="20" width="95" height="65" rx="6" fill="#132043" />
-                        <rect x="145" y="20" width="110" height="65" rx="6" fill="#132043" />
-                        <rect x="280" y="20" width="95" height="65" rx="6" fill="#132043" />
-                        <rect x="25" y="135" width="120" height="65" rx="6" fill="#132043" />
-                        <rect x="170" y="135" width="205" height="65" rx="6" fill="#132043" />
-                      </g>
-
-                      {/* 30th Street Horizontal Corridor */}
-                      <rect x="0" y="96" width="400" height="28" fill="#1B2952" />
-                      <line
-                        x1="0"
-                        y1="110"
-                        x2="400"
-                        y2="110"
-                        stroke="#C5A059"
-                        strokeOpacity="0.45"
-                        strokeWidth="1.5"
-                        strokeDasharray="8 6"
-                      />
-
-                      {/* Officers Club Landmark */}
-                      <g
-                        onClick={() => setSelectedLandmark('officers')}
-                        className="cursor-pointer"
-                      >
-                        <rect
-                          x="152"
-                          y="28"
-                          width="96"
-                          height="50"
-                          rx="6"
-                          fill={selectedLandmark === 'officers' ? '#233568' : '#18264F'}
-                          stroke="#64748B"
-                          strokeWidth="1"
-                        />
-                        <text
-                          x="200"
-                          y="56"
-                          textAnchor="middle"
-                          fill="#CBD5E1"
-                          fontSize="10"
-                          fontWeight="600"
-                        >
-                          {lang === 'ar' ? 'نادي الضباط' : 'Officers Club'}
-                        </text>
-                      </g>
-
-                      {/* R.B Law Firm Pin */}
-                      <g
-                        onClick={() => setSelectedLandmark('firm')}
-                        className="cursor-pointer"
-                      >
-                        <circle cx="272" cy="68" r="18" fill="#C5A059" fillOpacity="0.22" />
-                        <circle cx="272" cy="68" r="9" fill="#C5A059" stroke="#0B132B" strokeWidth="2.5" />
-                        <rect
-                          x="220"
-                          y="18"
-                          width="124"
-                          height="28"
-                          rx="6"
-                          fill="#C5A059"
-                        />
-                        <text
-                          x="282"
-                          y="36"
-                          textAnchor="middle"
-                          fill="#0B132B"
-                          fontSize="10"
-                          fontWeight="700"
-                        >
-                          {lang === 'ar' ? 'شركة الرضوان' : 'Al-Radwan Firm'}
-                        </text>
-                      </g>
-
-                      {/* 30th Street Label */}
-                      <g
-                        onClick={() => setSelectedLandmark('street30')}
-                        className="cursor-pointer"
-                      >
-                        <text
-                          x="90"
-                          y="114"
-                          textAnchor="middle"
-                          fill="#E2E8F0"
-                          fontSize="10"
-                          fontWeight="600"
-                        >
-                          {lang === 'ar' ? 'شارع الثلاثين' : '30th Street'}
-                        </text>
-                      </g>
-                    </svg>
+                      src={`https://maps.google.com/maps?q=32.5517807,35.8628263&hl=${lang}&z=17&output=embed`}
+                      loading="lazy"
+                      allowFullScreen
+                      referrerPolicy="no-referrer-when-downgrade"
+                      className="w-full h-full border-0"
+                    />
                   </div>
 
                   <div className="px-4 py-3 bg-[#0D1631] border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <span className="text-slate-300">
-                      {selectedLandmark === 'firm' &&
-                        (lang === 'ar'
-                          ? 'مقر شركة الرضوان — الطابق الثاني'
-                          : 'Al-Radwan Law & Arbitration HQ — 2nd Floor')}
-                      {selectedLandmark === 'officers' &&
-                        (lang === 'ar'
-                          ? 'ملاصق لنادي الضباط — إربد'
-                          : 'Directly adjacent to Officers Club')}
-                      {selectedLandmark === 'street30' &&
-                        (lang === 'ar'
-                          ? 'الواجهة المباشرة على شارع الثلاثين'
-                          : 'Direct frontage on 30th Street')}
+                    <span className="text-slate-200 font-medium">
+                      {lang === 'ar'
+                        ? 'إربد – شارع الثلاثين – عمارة علاء الدين سنتر'
+                        : 'Irbid – 30th Street – Alaa Al-Din Center'}
                     </span>
                     <a
-                      href="https://maps.google.com/?q=32.5385,35.8572"
+                      href="https://www.google.com/maps/search/?api=1&query=32.5517807,35.8628263"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[#C5A059] hover:underline font-semibold"
+                      className="inline-flex items-center gap-1 text-[#C5A059] hover:underline font-semibold shrink-0"
                     >
                       <span>{lang === 'ar' ? 'فتح في خرائط جوجل' : 'Open in Google Maps'}</span>
                       <ExternalLink className="w-3 h-3" aria-hidden="true" />

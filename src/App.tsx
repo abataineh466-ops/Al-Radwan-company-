@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MessageSquareText } from 'lucide-react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import type {
   BookingStatus,
   CaseStage,
@@ -230,6 +231,8 @@ export default function App() {
         onClose={() => setBookingModalOpen(false)}
         onBookingCreated={(booking) => setBookings((prev) => [booking, ...prev])}
       />
+
+      <SpeedInsights />
     </div>
   );
 }

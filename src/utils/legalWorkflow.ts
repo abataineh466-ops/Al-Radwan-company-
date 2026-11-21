@@ -217,8 +217,25 @@ export function isAdminHashRoute(hash: string): boolean {
   );
 }
 
+const INVISIBLE_BIDI_AND_ZW_REGEX = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g;
+
+export function normalizeArabicDigits(input: string): string {
+  return input
+    .replace(/[\u0660-\u0669]/g, (ch) => String(ch.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (ch) => String(ch.charCodeAt(0) - 0x06f0));
+}
+
+function normalizeCredentialInput(input: string): string {
+  return normalizeArabicDigits(input)
+    .replace(INVISIBLE_BIDI_AND_ZW_REGEX, '')
+    .trim()
+    .toLowerCase();
+}
+
 export function verifyAdminCredentials(username: string, password: string): boolean {
-  return username.trim().toLowerCase() === 'alradwan' && password === 'radwan2026';
+  const normalizedUser = normalizeCredentialInput(username);
+  const normalizedPass = normalizeCredentialInput(password);
+  return normalizedUser === 'alradwan' && normalizedPass === 'radwan2026';
 }
 
 export const VALID_SPECIALTY_IDS: readonly SpecialtyId[] = [

@@ -187,6 +187,9 @@ test('private #admin hash detection and lawyer login credentials verification', 
 
   assert.equal(verifyAdminCredentials('alradwan', 'radwan2026'), true);
   assert.equal(verifyAdminCredentials('  AlRadwan  ', 'radwan2026'), true);
+  assert.equal(verifyAdminCredentials('Alradwan', ' Radwan2026 '), true);
+  assert.equal(verifyAdminCredentials('alradwan', 'radwan٢٠٢٦'), true);
+  assert.equal(verifyAdminCredentials('\u200Falradwan\u200E', '\u200Fradwan2026\u200B'), true);
   assert.equal(verifyAdminCredentials('alradwan', 'wrongpass'), false);
   assert.equal(verifyAdminCredentials('radwan', 'AlRadwan2026'), false);
   assert.equal(verifyAdminCredentials('', ''), false);

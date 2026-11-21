@@ -35,11 +35,15 @@ export function AdminLoginGate({
 
   const BackIcon = lang === 'ar' ? ArrowRight : ArrowLeft;
 
-  function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!username.trim() || !password) {
+    const formData = new FormData(e.currentTarget);
+    const submittedUsername = username || String(formData.get('username') ?? '');
+    const submittedPassword = password || String(formData.get('password') ?? '');
+
+    if (!submittedUsername.trim() || !submittedPassword.trim()) {
       setErrorMsg(
         lang === 'ar'
           ? 'يرجى إدخال اسم المستخدم وكلمة المرور.'
@@ -48,11 +52,11 @@ export function AdminLoginGate({
       return;
     }
 
-    if (!verifyAdminCredentials(username, password)) {
+    if (!verifyAdminCredentials(submittedUsername, submittedPassword)) {
       setErrorMsg(
         lang === 'ar'
-          ? 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى المحاولة مجدداً.'
-          : 'Invalid username or password. Please try again.'
+          ? 'اسم المستخدم أو كلمة المرور غير صحيحة. تأكد من الكتابة بالأحرف الإنجليزية وحاول مجدداً.'
+          : 'Invalid username or password. Please check your credentials and try again.'
       );
       return;
     }
@@ -137,6 +141,9 @@ export function AdminLoginGate({
                     type="text"
                     dir="ltr"
                     autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     value={username}
                     onChange={(e) => {
                       setUsername(e.target.value);
@@ -167,6 +174,9 @@ export function AdminLoginGate({
                     type={showPassword ? 'text' : 'password'}
                     dir="ltr"
                     autoComplete="current-password"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);

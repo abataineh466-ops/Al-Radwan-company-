@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MessageSquareText } from 'lucide-react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import { Analytics } from '@vercel/analytics/react';
 import type {
   BookingStatus,
   CaseStage,
@@ -285,6 +286,7 @@ export default function App() {
       />
 
       <SpeedInsights />
+      <Analytics />
     </div>
   );
 }

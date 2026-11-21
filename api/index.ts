@@ -1,4 +1,4 @@
-import { createApiApp } from '../server/app';
+import { createApiApp } from '../server/app.js';
 
 /**
  * Single unified Vercel Serverless Function handling all /api/* endpoints.

@@ -375,21 +375,22 @@ async function generateIntakeReplyWithFallback(
   systemInstruction: string
 ) {
   const flashLiteHealthy = Date.now() >= flashLiteCooldownUntil;
-  const attempts: Array<{
+    const attempts: Array<{
     model: string;
     useLowThinking: boolean;
     timeoutMs: number;
     delayMs: number;
   }> = flashLiteHealthy
     ? [
-        { model: 'gemini-3.1-flash-lite', useLowThinking: false, timeoutMs: 8500, delayMs: 0 },
-        { model: 'gemini-3.1-flash-lite', useLowThinking: false, timeoutMs: 8500, delayMs: 350 },
-        { model: 'gemini-4-hydrogen', useLowThinking: true, timeoutMs: 9000, delayMs: 0 },
+        { model: 'gemini-2.5-flash', useLowThinking: false, timeoutMs: 8500, delayMs: 0 },
+        { model: 'gemini-2.5-flash', useLowThinking: false, timeoutMs: 8500, delayMs: 350 },
+        { model: 'gemini-2.5-flash-lite', useLowThinking: false, timeoutMs: 9000, delayMs: 0 },
       ]
     : [
-        { model: 'gemini-4-hydrogen', useLowThinking: true, timeoutMs: 9000, delayMs: 0 },
-        { model: 'gemini-3.1-flash-lite', useLowThinking: false, timeoutMs: 8500, delayMs: 350 },
+        { model: 'gemini-2.5-flash-lite', useLowThinking: false, timeoutMs: 9000, delayMs: 0 },
+        { model: 'gemini-2.5-flash', useLowThinking: false, timeoutMs: 8500, delayMs: 350 },
       ];
+
 
   let lastError: unknown = null;
 

@@ -7,6 +7,7 @@ import {
   extractPaymentRefFromClipboard,
   filterBookings,
   filterCases,
+  formatFriendlyAiError,
   formatJodCurrency,
   formatTelegramInquiryMessage,
   getConsultationFee,
@@ -14,6 +15,7 @@ import {
   isValidJordanianPhone,
   isValidTelegramBotToken,
   isValidTelegramChatId,
+  normalizeGeminiChatContents,
   normalizeSpecialtyId,
   parseSafiSummaryBlock,
   sanitizeJordanianPhone,
@@ -183,10 +185,10 @@ test('private #admin hash detection and lawyer login credentials verification', 
   assert.equal(isAdminHashRoute('#about'), false);
   assert.equal(isAdminHashRoute(''), false);
 
-  assert.equal(verifyAdminCredentials('radwan', 'AlRadwan2026'), true);
-  assert.equal(verifyAdminCredentials('  Radwan  ', 'AlRadwan2026'), true);
-  assert.equal(verifyAdminCredentials('radwan', 'wrongpass'), false);
-  assert.equal(verifyAdminCredentials('guest', 'AlRadwan2026'), false);
+  assert.equal(verifyAdminCredentials('alradwan', 'radwan2026'), true);
+  assert.equal(verifyAdminCredentials('  AlRadwan  ', 'radwan2026'), true);
+  assert.equal(verifyAdminCredentials('alradwan', 'wrongpass'), false);
+  assert.equal(verifyAdminCredentials('radwan', 'AlRadwan2026'), false);
   assert.equal(verifyAdminCredentials('', ''), false);
 });
 
@@ -222,4 +224,30 @@ test('Telegram inquiry message formatting and credential format validation', () 
   });
   assert.equal(payload.chat_id, '1002003004');
   assert.ok(payload.text.includes('استفسار حول شيك مرتجع.'));
+});
+
+test('Gemini chat normalization strips leading model welcome and merges consecutive user turns', () => {
+  const normalized = normalizeGeminiChatContents([
+    { role: 'assistant', text: 'أهلاً بك في شركة الرضوان' },
+    { role: 'user', text: 'عندي قضية شيك مرتجع' },
+    { role: 'user', text: 'قيمته 5000 دينار' },
+    { role: 'assistant', text: 'هل لديك ورقة اعتراض من البنك؟' },
+    { role: 'user', text: 'نعم موجودة' },
+  ]);
+
+  assert.equal(normalized.length, 3);
+  assert.equal(normalized[0].role, 'user');
+  assert.equal(normalized[0].parts[0].text, 'عندي قضية شيك مرتجع\n\nقيمته 5000 دينار');
+  assert.equal(normalized[1].role, 'model');
+  assert.equal(normalized[2].role, 'user');
+
+  const ar503 = formatFriendlyAiError(
+    '{"error":{"code":503,"message":"This model is currently experiencing high demand"}}',
+    'ar'
+  );
+  assert.ok(ar503.includes('ضغطاً مؤقتاً'));
+  assert.ok(!ar503.includes('{'));
+
+  const en429 = formatFriendlyAiError('RESOURCE_EXHAUSTED 429', 'en');
+  assert.ok(en429.toLowerCase().includes('rate limit'));
 });

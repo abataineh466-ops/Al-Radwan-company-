@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import type { ChatMessage, IntakeSummary, Language, SpecialtyId } from '../types/legal';
 import { SPECIALTIES } from '../data/firmContent';
-import { stripSafiJsonBlock } from '../utils/legalWorkflow';
+import { formatFriendlyAiError, stripSafiJsonBlock } from '../utils/legalWorkflow';
 
 interface AiIntakeModalProps {
   isOpen: boolean;
@@ -38,6 +38,7 @@ export function AiIntakeModal({
   );
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [canRetry, setCanRetry] = useState(false);
   const [generatedSummary, setGeneratedSummary] = useState<IntakeSummary | null>(null);
   const scrollEndRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +46,7 @@ export function AiIntakeModal({
     if (!isOpen) return;
     setSelectedSpecialty(initialSpecialty);
     setErrorMsg('');
+    setCanRetry(false);
 
     const specLabel = initialSpecialty
       ? SPECIALTIES.find((s) => s.id === initialSpecialty)?.title[lang]
@@ -79,47 +81,38 @@ export function AiIntakeModal({
 
   const ArrowIcon = lang === 'ar' ? ArrowLeft : ArrowRight;
 
-  async function sendUserMessage(rawText: string, specialtyOverride?: SpecialtyId) {
-    const trimmed = rawText.trim();
-    if (!trimmed || loading) return;
-
-    const activeSpec = specialtyOverride ?? selectedSpecialty;
-    if (specialtyOverride) {
-      setSelectedSpecialty(specialtyOverride);
-    }
-
-    const userMsg: ChatMessage = {
-      id: `u-${Date.now()}`,
-      role: 'user',
-      text: trimmed,
-      timestamp: new Date().toISOString(),
-    };
-
-    const nextHistory = [...messages, userMsg];
-    setMessages(nextHistory);
-    setInputValue('');
+  async function requestAiReply(historyToSend: ChatMessage[], activeSpec?: SpecialtyId) {
     setLoading(true);
     setErrorMsg('');
+    setCanRetry(false);
 
     try {
       const res = await fetch('/api/intake-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: nextHistory.map((m) => ({ role: m.role, text: m.text })),
+          messages: historyToSend.map((m) => ({ role: m.role, text: m.text })),
           lang,
           preselectedSpecialty: activeSpec,
         }),
+        signal: AbortSignal.timeout(25000),
       });
 
-      const data = (await res.json()) as {
+      const contentType = res.headers.get('content-type') ?? '';
+      let data: {
         reply?: string;
         summary?: IntakeSummary | null;
         error?: string;
-      };
+      } = {};
+
+      if (contentType.includes('application/json')) {
+        data = (await res.json()) as typeof data;
+      } else if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to get AI response');
+        throw new Error(data.error || `HTTP ${res.status}`);
       }
 
       const cleanReply = stripSafiJsonBlock(data.reply ?? '');
@@ -141,16 +134,39 @@ export function AiIntakeModal({
         onSummarySaved(data.summary);
       }
     } catch (err: unknown) {
-      setErrorMsg(
-        err instanceof Error
-          ? err.message
-          : lang === 'ar'
-            ? 'تعذر الاتصال بالمساعد الذكي حالياً.'
-            : 'Unable to reach the AI assistant right now.'
-      );
+      const rawErr = err instanceof Error ? err.message : '';
+      setErrorMsg(formatFriendlyAiError(rawErr, lang));
+      setCanRetry(true);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function sendUserMessage(rawText: string, specialtyOverride?: SpecialtyId) {
+    const trimmed = rawText.trim();
+    if (!trimmed || loading) return;
+
+    const activeSpec = specialtyOverride ?? selectedSpecialty;
+    if (specialtyOverride) {
+      setSelectedSpecialty(specialtyOverride);
+    }
+
+    const userMsg: ChatMessage = {
+      id: `u-${Date.now()}`,
+      role: 'user',
+      text: trimmed,
+      timestamp: new Date().toISOString(),
+    };
+
+    const nextHistory = [...messages, userMsg];
+    setMessages(nextHistory);
+    setInputValue('');
+    await requestAiReply(nextHistory, activeSpec);
+  }
+
+  async function handleRetry() {
+    if (loading || messages.length === 0) return;
+    await requestAiReply(messages, selectedSpecialty);
   }
 
   function handleFormSubmit(e: FormEvent) {
@@ -261,10 +277,22 @@ export function AiIntakeModal({
           {errorMsg && (
             <div
               role="alert"
-              className="rounded-xl bg-red-50 border border-red-200 p-3.5 flex items-start gap-2.5 text-xs sm:text-sm text-red-800"
+              className="rounded-xl bg-red-50 border border-red-200 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-red-800"
             >
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{errorMsg}</span>
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{errorMsg}</span>
+              </div>
+              {canRetry && (
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  disabled={loading}
+                  className="min-h-[38px] px-3.5 py-1.5 rounded-lg bg-[#0B132B] hover:bg-[#162247] text-white text-xs font-bold whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}
+                </button>
+              )}
             </div>
           )}
 

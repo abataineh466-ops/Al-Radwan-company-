@@ -218,7 +218,7 @@ export function isAdminHashRoute(hash: string): boolean {
 }
 
 export function verifyAdminCredentials(username: string, password: string): boolean {
-  return username.trim().toLowerCase() === 'radwan' && password === 'AlRadwan2026';
+  return username.trim().toLowerCase() === 'alradwan' && password === 'radwan2026';
 }
 
 export const VALID_SPECIALTY_IDS: readonly SpecialtyId[] = [
@@ -290,4 +290,81 @@ export function buildTelegramSendMessagePayload(
     chat_id: chatId.trim(),
     text: formatTelegramInquiryMessage(params),
   };
+}
+
+export interface NormalizedGeminiContent {
+  role: 'user' | 'model';
+  parts: Array<{ text: string }>;
+}
+
+/**
+ * Ensures Gemini multi-turn contents always start with a user message
+ * and strictly alternate between user and model turns.
+ */
+export function normalizeGeminiChatContents(
+  messages: Array<{ role: string; text: string }>
+): NormalizedGeminiContent[] {
+  const normalized: NormalizedGeminiContent[] = [];
+
+  for (const raw of messages) {
+    const text = String(raw?.text ?? '').trim();
+    if (!text) continue;
+    const role: 'user' | 'model' = raw.role === 'assistant' || raw.role === 'model' ? 'model' : 'user';
+
+    // Gemini generateContent expects the conversation to begin with a user turn.
+    if (normalized.length === 0 && role === 'model') {
+      continue;
+    }
+
+    const last = normalized[normalized.length - 1];
+    if (last && last.role === role) {
+      last.parts[0].text = `${last.parts[0].text}\n\n${text}`;
+    } else {
+      normalized.push({ role, parts: [{ text }] });
+    }
+  }
+
+  return normalized;
+}
+
+export function formatFriendlyAiError(rawMessage: string, lang: Language): string {
+  const lower = rawMessage.toLowerCase();
+
+  if (
+    lower.includes('503') ||
+    lower.includes('unavailable') ||
+    lower.includes('high demand') ||
+    lower.includes('overloaded')
+  ) {
+    return lang === 'ar'
+      ? 'المساعد الذكي يشهد ضغطاً مؤقتاً الآن. يرجى الضغط على "إعادة المحاولة" بعد لحظات أو التواصل مباشرة على 0796251902.'
+      : 'The AI assistant is experiencing temporary high demand. Please tap Retry in a moment or call 0796251902.';
+  }
+
+  if (lower.includes('429') || lower.includes('resource_exhausted') || lower.includes('quota')) {
+    return lang === 'ar'
+      ? 'تم تجاوز الحد المؤقت لطلبات المساعد الذكي. يرجى المحاولة بعد قليل أو حجز استشارتك المجانية مباشرة.'
+      : 'Temporary rate limit reached. Please try again shortly or book your free consultation directly.';
+  }
+
+  if (
+    lower.includes('api_key') ||
+    lower.includes('permission_denied') ||
+    lower.includes('403') ||
+    lower.includes('not configured')
+  ) {
+    return lang === 'ar'
+      ? 'خدمة المساعد الذكي غير مفعّلة حالياً في إعدادات الخادم. يمكنك حجز استشارتك المجانية أو التواصل مباشرة على 0796251902.'
+      : 'The AI assistant service is not configured on this server yet. Please book a free consultation or call 0796251902.';
+  }
+
+  if (lower.includes('unexpected token') || lower.includes('404') || lower.includes('failed to fetch')) {
+    return lang === 'ar'
+      ? 'تعذر الاتصال بخادم المساعد الذكي حالياً. تأكد من اتصالك بالإنترنت أو استخدم زر حجز الاستشارة المجانية.'
+      : 'Unable to reach the AI assistant server right now. Please check your connection or book a free consultation directly.';
+  }
+
+  return lang === 'ar'
+    ? 'حدث خطأ مؤقت أثناء معالجة رسالتك. يرجى إعادة المحاولة.'
+    : 'A temporary error occurred while processing your message. Please try again.';
 }

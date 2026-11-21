@@ -5,8 +5,12 @@ import type {
   BookingStatus,
   CaseStage,
   ConsultationBooking,
+  ContactInquiry,
+  FirmLawyer,
   IntakeSummary,
   Language,
+  LawyerRole,
+  LawyerStatus,
   LegalCase,
   SpecialtyId,
 } from './types/legal';
@@ -32,9 +36,8 @@ function readAdminSession(): boolean {
 
 export default function App() {
   const [lang, setLang] = useState<Language>('ar');
-  const [isAdminRoute, setIsAdminRoute] = useState<boolean>(() =>
-    isAdminHashRoute(window.location.hash)
-  );
+  // Always land on the public client homepage first on open/reload
+  const [isAdminRoute, setIsAdminRoute] = useState<boolean>(false);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(readAdminSession);
 
   const [aiModalOpen, setAiModalOpen] = useState(false);
@@ -47,6 +50,8 @@ export default function App() {
   const [bookings, setBookings] = useState<ConsultationBooking[]>([]);
   const [cases, setCases] = useState<LegalCase[]>([]);
   const [intakes, setIntakes] = useState<IntakeSummary[]>([]);
+  const [inquiries, setInquiries] = useState<ContactInquiry[]>([]);
+  const [lawyers, setLawyers] = useState<FirmLawyer[]>([]);
   const [loadingData, setLoadingData] = useState(false);
 
   // Sync HTML lang & RTL/LTR direction automatically
@@ -55,13 +60,12 @@ export default function App() {
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
   }, [lang]);
 
-  // Listen for #admin hash navigation
+  // Clear any stale #admin hash on initial load so opening or refreshing the link
+  // ALWAYS presents the public client homepage first; lawyers enter explicitly via the Lawyer Login button
   useEffect(() => {
-    function handleHashChange() {
-      setIsAdminRoute(isAdminHashRoute(window.location.hash));
+    if (isAdminHashRoute(window.location.hash)) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
     }
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   async function fetchDashboardData() {
@@ -73,16 +77,20 @@ export default function App() {
         bookings: ConsultationBooking[];
         cases: LegalCase[];
         intakes: IntakeSummary[];
+        inquiries?: ContactInquiry[];
+        lawyers?: FirmLawyer[];
       };
       setBookings(data.bookings ?? []);
       setCases(data.cases ?? []);
       setIntakes(data.intakes ?? []);
+      setInquiries(data.inquiries ?? []);
+      setLawyers(data.lawyers ?? []);
     } finally {
       setLoadingData(false);
     }
   }
 
-  // Only load private firm dashboard data after staff authenticates on #admin
+  // Only load private firm dashboard data after staff authenticates
   useEffect(() => {
     if (isAdminRoute && isAdminAuthenticated) {
       fetchDashboardData();
@@ -111,9 +119,17 @@ export default function App() {
     setIsAdminAuthenticated(false);
   }
 
+  function handleOpenLawyerLogin() {
+    setIsAdminRoute(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   function handleExitAdmin() {
-    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    if (isAdminHashRoute(window.location.hash)) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    }
     setIsAdminRoute(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function openBooking(specialtyId?: SpecialtyId, intake?: IntakeSummary | null) {
@@ -127,11 +143,14 @@ export default function App() {
     setAiModalOpen(true);
   }
 
-  async function handleUpdateBookingStatus(id: string, status: BookingStatus) {
+  async function handleUpdateBooking(
+    id: string,
+    updates: { status?: BookingStatus; assignedLawyer?: string }
+  ) {
     const res = await fetch(`/api/bookings/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(updates),
     });
     if (res.ok) {
       const data = (await res.json()) as { booking: ConsultationBooking };
@@ -170,7 +189,7 @@ export default function App() {
 
   async function handleUpdateCase(
     id: string,
-    updates: { stage?: CaseStage; nextHearingDate?: string }
+    updates: { stage?: CaseStage; nextHearingDate?: string; assignedLawyer?: string }
   ) {
     const res = await fetch(`/api/cases/${id}`, {
       method: 'PATCH',
@@ -183,6 +202,127 @@ export default function App() {
     }
   }
 
+  async function handleCreateLawyer(payload: {
+    name: string;
+    nameEn?: string;
+    phone: string;
+    email?: string;
+    role: LawyerRole;
+    specialties: SpecialtyId[];
+    status: LawyerStatus;
+    canManageRoles: boolean;
+  }): Promise<{ ok: boolean; error?: string }> {
+    const res = await fetch('/api/lawyers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = (await res.json().catch(() => ({}))) as { lawyer?: FirmLawyer; error?: string };
+    if (res.ok && data.lawyer) {
+      setLawyers((prev) => [...prev, data.lawyer!]);
+      return { ok: true };
+    }
+    return { ok: false, error: data.error };
+  }
+
+  async function handleUpdateLawyer(
+    id: string,
+    updates: Partial<{
+      role: LawyerRole;
+      status: LawyerStatus;
+      canManageRoles: boolean;
+      specialties: SpecialtyId[];
+    }>
+  ): Promise<{ ok: boolean; error?: string }> {
+    const res = await fetch(`/api/lawyers/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      lawyer?: FirmLawyer;
+      cases?: LegalCase[];
+      bookings?: ConsultationBooking[];
+      error?: string;
+    };
+    if (res.ok && data.lawyer) {
+      setLawyers((prev) => prev.map((l) => (l.id === id ? data.lawyer! : l)));
+      if (data.cases) setCases(data.cases);
+      if (data.bookings) setBookings(data.bookings);
+      return { ok: true };
+    }
+    return { ok: false, error: data.error };
+  }
+
+  async function handleDeleteLawyer(
+    id: string,
+    reassignToLawyerName: string
+  ): Promise<{
+    ok: boolean;
+    error?: string;
+    reassignedCases?: number;
+    reassignedBookings?: number;
+  }> {
+    const res = await fetch(`/api/lawyers/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reassignToLawyerName }),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      lawyers?: FirmLawyer[];
+      cases?: LegalCase[];
+      bookings?: ConsultationBooking[];
+      reassignedCases?: number;
+      reassignedBookings?: number;
+      error?: string;
+    };
+    if (res.ok) {
+      if (data.lawyers) setLawyers(data.lawyers);
+      if (data.cases) setCases(data.cases);
+      if (data.bookings) setBookings(data.bookings);
+      return {
+        ok: true,
+        reassignedCases: data.reassignedCases,
+        reassignedBookings: data.reassignedBookings,
+      };
+    }
+    return { ok: false, error: data.error };
+  }
+
+  async function handleBulkTransfer(payload: {
+    fromLawyerName: string;
+    toLawyerName: string;
+    scope: 'active_cases' | 'all_cases' | 'all_cases_and_bookings';
+  }): Promise<{
+    ok: boolean;
+    error?: string;
+    transferredCases?: number;
+    transferredBookings?: number;
+  }> {
+    const res = await fetch('/api/admin/transfer-cases', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      cases?: LegalCase[];
+      bookings?: ConsultationBooking[];
+      transferredCases?: number;
+      transferredBookings?: number;
+      error?: string;
+    };
+    if (res.ok) {
+      if (data.cases) setCases(data.cases);
+      if (data.bookings) setBookings(data.bookings);
+      return {
+        ok: true,
+        transferredCases: data.transferredCases,
+        transferredBookings: data.transferredBookings,
+      };
+    }
+    return { ok: false, error: data.error };
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-white text-[#0B132B] overflow-x-clip">
       {isAdminRoute ? (
@@ -192,13 +332,20 @@ export default function App() {
             bookings={bookings}
             cases={cases}
             intakes={intakes}
+            inquiries={inquiries}
+            lawyers={lawyers}
             loading={loadingData}
             onExitDashboard={handleExitAdmin}
             onLogout={handleAdminLogout}
             onToggleLanguage={toggleLanguage}
-            onUpdateBookingStatus={handleUpdateBookingStatus}
+            onUpdateBooking={handleUpdateBooking}
             onCreateCase={handleCreateCase}
             onUpdateCase={handleUpdateCase}
+            onCreateLawyer={handleCreateLawyer}
+            onUpdateLawyer={handleUpdateLawyer}
+            onDeleteLawyer={handleDeleteLawyer}
+            onBulkTransfer={handleBulkTransfer}
+            onInquiriesSynced={setInquiries}
           />
         ) : (
           <AdminLoginGate
@@ -213,6 +360,7 @@ export default function App() {
           <Navbar
             lang={lang}
             onBookClick={() => openBooking()}
+            onLawyerLoginClick={handleOpenLawyerLogin}
             onToggleLanguage={toggleLanguage}
           />
 
@@ -241,7 +389,11 @@ export default function App() {
             />
           </main>
 
-          <Footer lang={lang} onToggleLanguage={toggleLanguage} />
+          <Footer
+            lang={lang}
+            onLawyerLoginClick={handleOpenLawyerLogin}
+            onToggleLanguage={toggleLanguage}
+          />
 
           {/* Compact Floating AI Intake Trigger (respects 15% mobile sticky cap) */}
           <button

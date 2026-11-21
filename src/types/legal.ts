@@ -83,3 +83,27 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
 }
+
+export type LawyerRole =
+  | 'managing_partner'
+  | 'partner'
+  | 'senior_lawyer'
+  | 'associate_lawyer'
+  | 'legal_consultant'
+  | 'trainee_lawyer';
+
+export type LawyerStatus = 'active' | 'on_leave';
+
+export interface FirmLawyer {
+  id: string;
+  name: string;
+  nameEn?: string;
+  phone: string;
+  email?: string;
+  role: LawyerRole;
+  specialties: SpecialtyId[];
+  status: LawyerStatus;
+  canManageRoles: boolean;
+  joinedAt: string;
+}
+

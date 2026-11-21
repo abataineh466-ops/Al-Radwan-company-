@@ -1,0 +1,9 @@
+.data
+.playwright-cli
+.aistudio
+*.test.ts
+public/assets/aistudio/ai_f86a61a7.js
+public/assets/aistudio/app_c3757cd4.py
+public/assets/aistudio/injector_09e5fb9e.py
+public/assets/aistudio/README_48ef2a1e.md
+public/assets/aistudio/requirements_1c9be5af.txt

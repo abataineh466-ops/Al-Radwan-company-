@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import express, { type Express } from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -25,12 +24,12 @@ import {
   parseSafiSummaryBlock,
   sanitizeJordanianPhone,
   VALID_SPECIALTY_IDS,
-} from '../src/utils/legalWorkflow';
+} from '../src/utils/legalWorkflow.js';
 import {
   LAWYER_ROLE_META,
   normalizeLawyerRole,
   pickRecommendedLawyerForSpecialty,
-} from '../src/utils/adminAnalytics';
+} from '../src/utils/adminAnalytics.js';
 
 export interface FirmDatabase {
   bookings: ConsultationBooking[];

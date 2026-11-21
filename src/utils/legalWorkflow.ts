@@ -205,3 +205,89 @@ export function computeDashboardMetrics(
     unconvertedIntakes,
   };
 }
+
+export const ADMIN_SESSION_STORAGE_KEY = 'rb_law_admin_authenticated';
+
+export function isAdminHashRoute(hash: string): boolean {
+  const normalized = hash.trim().toLowerCase();
+  return (
+    normalized === '#admin' ||
+    normalized.startsWith('#admin/') ||
+    normalized.startsWith('#admin?')
+  );
+}
+
+export function verifyAdminCredentials(username: string, password: string): boolean {
+  return username.trim().toLowerCase() === 'radwan' && password === 'AlRadwan2026';
+}
+
+export const VALID_SPECIALTY_IDS: readonly SpecialtyId[] = [
+  'civil',
+  'sharia',
+  'criminal',
+  'commercial',
+  'labor',
+  'administrative',
+  'arbitration',
+] as const;
+
+export const SPECIALTY_LABELS_AR: Record<SpecialtyId, string> = {
+  civil: 'القضايا المدنية والحقوقية',
+  sharia: 'القضايا الشرعية والأحوال الشخصية',
+  criminal: 'القضايا الجزائية والجرائم الإلكترونية',
+  commercial: 'القضايا التجارية وتأسيس الشركات',
+  labor: 'القضايا العمالية وحقوق الموظفين',
+  administrative: 'القضايا الإدارية ودوائر التنفيذ',
+  arbitration: 'التحكيم والوساطة القانونية',
+};
+
+export function normalizeSpecialtyId(value: unknown): SpecialtyId {
+  if (typeof value === 'string' && VALID_SPECIALTY_IDS.includes(value as SpecialtyId)) {
+    return value as SpecialtyId;
+  }
+  return 'civil';
+}
+
+export function isValidTelegramBotToken(token: string): boolean {
+  return /^\d{5,15}:[A-Za-z0-9_-]{20,80}$/.test(token.trim());
+}
+
+export function isValidTelegramChatId(chatId: string): boolean {
+  return /^-?\d{5,20}$/.test(chatId.trim()) || /^@[A-Za-z0-9_]{5,32}$/.test(chatId.trim());
+}
+
+export function formatTelegramInquiryMessage(params: {
+  name: string;
+  phone: string;
+  specialtyId: SpecialtyId;
+  message: string;
+}): string {
+  const cleanName = params.name.trim().slice(0, 120);
+  const cleanPhone = sanitizeJordanianPhone(params.phone);
+  const specialtyLabel = SPECIALTY_LABELS_AR[normalizeSpecialtyId(params.specialtyId)];
+  const cleanMessage = params.message.trim().slice(0, 2000);
+
+  return [
+    '📩 رسالة جديدة من موقع شركة الرضوان للمحاماة',
+    '────────────────────',
+    `👤 الاسم: ${cleanName}`,
+    `📞 رقم الهاتف: ${cleanPhone}`,
+    `⚖️ نوع القضية: ${specialtyLabel}`,
+    `📝 نص الرسالة:\n${cleanMessage}`,
+  ].join('\n');
+}
+
+export function buildTelegramSendMessagePayload(
+  chatId: string,
+  params: {
+    name: string;
+    phone: string;
+    specialtyId: SpecialtyId;
+    message: string;
+  }
+): { chat_id: string; text: string } {
+  return {
+    chat_id: chatId.trim(),
+    text: formatTelegramInquiryMessage(params),
+  };
+}

@@ -6,6 +6,7 @@ import {
   CalendarCheck,
   FilePlus2,
   Globe,
+  LogOut,
   MessageSquareText,
   Plus,
   Scale,
@@ -36,6 +37,7 @@ interface LawyerDashboardProps {
   intakes: IntakeSummary[];
   loading: boolean;
   onExitDashboard: () => void;
+  onLogout: () => void;
   onToggleLanguage: () => void;
   onUpdateBookingStatus: (id: string, status: BookingStatus) => Promise<void>;
   onCreateCase: (payload: {
@@ -59,6 +61,7 @@ export function LawyerDashboard({
   intakes,
   loading,
   onExitDashboard,
+  onLogout,
   onToggleLanguage,
   onUpdateBookingStatus,
   onCreateCase,
@@ -155,6 +158,14 @@ export function LawyerDashboard({
             >
               <Globe className="w-3.5 h-3.5 text-[#C5A059]" />
               <span>{lang === 'ar' ? 'EN' : 'عربي'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="min-h-[40px] px-3 py-1.5 rounded-lg border border-red-400/40 bg-red-500/10 hover:bg-red-500/20 text-xs sm:text-sm font-semibold text-red-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            >
+              <LogOut className="w-4 h-4" aria-hidden="true" />
+              <span>{lang === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}</span>
             </button>
             <button
               type="button"

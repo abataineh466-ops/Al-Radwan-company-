@@ -34,6 +34,7 @@ export function TestimonialsAndContactSection({
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [telegramDelivered, setTelegramDelivered] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   async function handleInquirySubmit(e: FormEvent) {
@@ -70,12 +71,21 @@ export function TestimonialsAndContactSection({
       const res = await fetch('/api/inquiries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, specialtyId, message }),
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.trim(),
+          specialtyId,
+          message: message.trim(),
+        }),
       });
+      const data = (await res.json()) as {
+        error?: string;
+        telegramDelivered?: boolean;
+      };
       if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
         throw new Error(data.error || 'Submission failed');
       }
+      setTelegramDelivered(Boolean(data.telegramDelivered));
       setSubmitStatus('success');
       setName('');
       setPhone('');
@@ -290,9 +300,13 @@ export function TestimonialsAndContactSection({
                     </span>
                   </div>
                   <p className="text-sm text-emerald-900">
-                    {lang === 'ar'
-                      ? 'تم تسجيل طلبك لدى فريق شركة الرضوان للتحكيم والمحاماة. يمكنك أيضاً حجز موعد استشارة مؤكد مباشرة.'
-                      : 'Your inquiry has been logged for our legal team. You can also confirm a consultation slot immediately.'}
+                    {telegramDelivered
+                      ? lang === 'ar'
+                        ? 'تم استلام رسالتك وإرسال إشعار فوري لفريق شركة الرضوان للتحكيم والمحاماة. يمكنك أيضاً حجز موعد استشارة مجانية مباشرة.'
+                        : 'Your inquiry has been received and forwarded instantly to our legal team. You can also book a free consultation slot.'
+                      : lang === 'ar'
+                        ? 'تم تسجيل طلبك لدى فريق شركة الرضوان للتحكيم والمحاماة. يمكنك أيضاً حجز موعد استشارة مجانية مباشرة.'
+                        : 'Your inquiry has been logged for our legal team. You can also confirm a free consultation slot immediately.'}
                   </p>
                   <div className="flex flex-wrap gap-2 pt-1">
                     <button
@@ -304,7 +318,10 @@ export function TestimonialsAndContactSection({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSubmitStatus('idle')}
+                      onClick={() => {
+                        setSubmitStatus('idle');
+                        setTelegramDelivered(false);
+                      }}
                       className="min-h-[44px] px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-medium cursor-pointer"
                     >
                       {lang === 'ar' ? 'إرسال استفسار آخر' : 'Send Another'}

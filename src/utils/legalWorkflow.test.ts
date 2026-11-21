@@ -1,18 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildTelegramSendMessagePayload,
   computeDashboardMetrics,
   extractOtpFromClipboard,
   extractPaymentRefFromClipboard,
   filterBookings,
   filterCases,
   formatJodCurrency,
+  formatTelegramInquiryMessage,
   getConsultationFee,
+  isAdminHashRoute,
   isValidJordanianPhone,
+  isValidTelegramBotToken,
+  isValidTelegramChatId,
+  normalizeSpecialtyId,
   parseSafiSummaryBlock,
   sanitizeJordanianPhone,
   stripSafiJsonBlock,
   validateBookingCheckout,
+  verifyAdminCredentials,
 } from './legalWorkflow';
 import type { ConsultationBooking, IntakeSummary, LegalCase } from '../types/legal';
 
@@ -167,4 +174,52 @@ test('dashboard filtering and KPI metrics computation', () => {
   assert.equal(metrics.completedBookings, 1);
   assert.equal(metrics.activeCases, 1);
   assert.equal(metrics.unconvertedIntakes, 1);
+});
+
+test('private #admin hash detection and lawyer login credentials verification', () => {
+  assert.equal(isAdminHashRoute('#admin'), true);
+  assert.equal(isAdminHashRoute('#ADMIN'), true);
+  assert.equal(isAdminHashRoute('#admin/cases'), true);
+  assert.equal(isAdminHashRoute('#about'), false);
+  assert.equal(isAdminHashRoute(''), false);
+
+  assert.equal(verifyAdminCredentials('radwan', 'AlRadwan2026'), true);
+  assert.equal(verifyAdminCredentials('  Radwan  ', 'AlRadwan2026'), true);
+  assert.equal(verifyAdminCredentials('radwan', 'wrongpass'), false);
+  assert.equal(verifyAdminCredentials('guest', 'AlRadwan2026'), false);
+  assert.equal(verifyAdminCredentials('', ''), false);
+});
+
+test('Telegram inquiry message formatting and credential format validation', () => {
+  assert.equal(normalizeSpecialtyId('sharia'), 'sharia');
+  assert.equal(normalizeSpecialtyId('invalid_value'), 'civil');
+
+  assert.equal(isValidTelegramBotToken('123456789:AAExample_Valid_Token_Value_12345'), true);
+  assert.equal(isValidTelegramBotToken('not-a-valid-token'), false);
+  assert.equal(isValidTelegramBotToken(''), false);
+
+  assert.equal(isValidTelegramChatId('1002003004'), true);
+  assert.equal(isValidTelegramChatId('-1001234567890'), true);
+  assert.equal(isValidTelegramChatId('@alradwan_alerts'), true);
+  assert.equal(isValidTelegramChatId('bad chat id!'), false);
+
+  const message = formatTelegramInquiryMessage({
+    name: '  محمد العزام  ',
+    phone: '+962 79 123 4567',
+    specialtyId: 'commercial',
+    message: '  أرغب في استشارة حول تأسيس شركة ذات مسؤولية محدودة.  ',
+  });
+  assert.ok(message.includes('محمد العزام'));
+  assert.ok(message.includes('0791234567'));
+  assert.ok(message.includes('القضايا التجارية وتأسيس الشركات'));
+  assert.ok(message.includes('تأسيس شركة ذات مسؤولية محدودة'));
+
+  const payload = buildTelegramSendMessagePayload(' 1002003004 ', {
+    name: 'محمد العزام',
+    phone: '0791234567',
+    specialtyId: 'civil',
+    message: 'استفسار حول شيك مرتجع.',
+  });
+  assert.equal(payload.chat_id, '1002003004');
+  assert.ok(payload.text.includes('استفسار حول شيك مرتجع.'));
 });

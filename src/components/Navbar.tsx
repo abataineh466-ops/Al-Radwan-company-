@@ -6,14 +6,12 @@ import { UI_COPY } from '../data/firmContent';
 interface NavbarProps {
   lang: Language;
   onBookClick: () => void;
-  onOpenDashboard: () => void;
   onToggleLanguage: () => void;
 }
 
 export function Navbar({
   lang,
   onBookClick,
-  onOpenDashboard,
   onToggleLanguage,
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -93,26 +91,16 @@ export function Navbar({
               {item.label}
             </a>
           ))}
-          <div className="pt-2 border-t border-white/10 flex items-center gap-2">
+          <div className="pt-2 border-t border-white/10">
             <button
               type="button"
               onClick={() => {
                 onToggleLanguage();
                 setMobileMenuOpen(false);
               }}
-              className="flex-1 min-h-[44px] px-3 rounded-lg border border-white/20 text-white text-sm font-semibold hover:bg-white/10 cursor-pointer"
+              className="w-full min-h-[44px] px-3 rounded-lg border border-white/20 text-white text-sm font-semibold hover:bg-white/10 cursor-pointer"
             >
               {lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onOpenDashboard();
-                setMobileMenuOpen(false);
-              }}
-              className="flex-1 min-h-[44px] px-3 rounded-lg border border-[#C5A059]/60 text-[#C5A059] text-sm font-semibold hover:bg-[#C5A059]/10 cursor-pointer"
-            >
-              {UI_COPY.hero.lawyerPortal[lang]}
             </button>
           </div>
         </div>

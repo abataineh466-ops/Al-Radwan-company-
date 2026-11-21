@@ -3,7 +3,6 @@ import {
   ArrowRight,
   Globe,
   HeartHandshake,
-  LayoutDashboard,
   MapPin,
   MessageSquareText,
   Phone,
@@ -16,7 +15,6 @@ interface HeroSectionProps {
   onBookClick: () => void;
   onOpenAiIntake: () => void;
   onToggleLanguage: () => void;
-  onOpenDashboard: () => void;
 }
 
 export function HeroSection({
@@ -24,7 +22,6 @@ export function HeroSection({
   onBookClick,
   onOpenAiIntake,
   onToggleLanguage,
-  onOpenDashboard,
 }: HeroSectionProps) {
   const ArrowIcon = lang === 'ar' ? ArrowLeft : ArrowRight;
 
@@ -55,15 +52,6 @@ export function HeroSection({
           >
             <Globe className="w-3.5 h-3.5 text-[#C5A059]" aria-hidden="true" />
             <span>{lang === 'ar' ? 'English' : 'العربية'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenDashboard}
-            className="min-h-[40px] px-3 py-1.5 rounded-lg border border-[#C5A059]/40 hover:bg-[#C5A059]/15 text-xs sm:text-sm font-semibold text-[#C5A059] flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]"
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>{UI_COPY.hero.lawyerPortal[lang]}</span>
           </button>
         </div>
       </div>

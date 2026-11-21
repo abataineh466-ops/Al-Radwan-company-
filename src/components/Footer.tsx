@@ -4,11 +4,10 @@ import { FIRM_CONTACT, UI_COPY } from '../data/firmContent';
 
 interface FooterProps {
   lang: Language;
-  onOpenDashboard: () => void;
   onToggleLanguage: () => void;
 }
 
-export function Footer({ lang, onOpenDashboard, onToggleLanguage }: FooterProps) {
+export function Footer({ lang, onToggleLanguage }: FooterProps) {
   return (
     <footer className="bg-[#070D1F] text-slate-300 border-t border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs sm:text-sm">
@@ -30,14 +29,6 @@ export function Footer({ lang, onOpenDashboard, onToggleLanguage }: FooterProps)
 
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <span className="font-bold text-[#C5A059]">{UI_COPY.closingMotto[lang]}</span>
-          <span aria-hidden="true">·</span>
-          <button
-            type="button"
-            onClick={onOpenDashboard}
-            className="text-slate-200 hover:text-[#C5A059] font-semibold cursor-pointer"
-          >
-            {UI_COPY.hero.lawyerPortal[lang]}
-          </button>
           <span aria-hidden="true">·</span>
           <button
             type="button"

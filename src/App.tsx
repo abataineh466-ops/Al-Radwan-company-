@@ -18,10 +18,23 @@ import { Footer } from './components/Footer';
 import { AiIntakeModal } from './components/AiIntakeModal';
 import { BookingModal } from './components/BookingModal';
 import { LawyerDashboard } from './components/LawyerDashboard';
+import { AdminLoginGate } from './components/AdminLoginGate';
+import { ADMIN_SESSION_STORAGE_KEY, isAdminHashRoute } from './utils/legalWorkflow';
+
+function readAdminSession(): boolean {
+  try {
+    return window.sessionStorage.getItem(ADMIN_SESSION_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 export default function App() {
   const [lang, setLang] = useState<Language>('ar');
-  const [view, setView] = useState<'public' | 'dashboard'>('public');
+  const [isAdminRoute, setIsAdminRoute] = useState<boolean>(() =>
+    isAdminHashRoute(window.location.hash)
+  );
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(readAdminSession);
 
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiInitialSpec, setAiInitialSpec] = useState<SpecialtyId | undefined>(undefined);
@@ -41,6 +54,15 @@ export default function App() {
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
   }, [lang]);
 
+  // Listen for #admin hash navigation
+  useEffect(() => {
+    function handleHashChange() {
+      setIsAdminRoute(isAdminHashRoute(window.location.hash));
+    }
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   async function fetchDashboardData() {
     setLoadingData(true);
     try {
@@ -59,12 +81,38 @@ export default function App() {
     }
   }
 
+  // Only load private firm dashboard data after staff authenticates on #admin
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (isAdminRoute && isAdminAuthenticated) {
+      fetchDashboardData();
+    }
+  }, [isAdminRoute, isAdminAuthenticated]);
 
   function toggleLanguage() {
     setLang((prev) => (prev === 'ar' ? 'en' : 'ar'));
+  }
+
+  function handleAdminLoginSuccess() {
+    try {
+      window.sessionStorage.setItem(ADMIN_SESSION_STORAGE_KEY, '1');
+    } catch {
+      // Ignore storage restriction errors
+    }
+    setIsAdminAuthenticated(true);
+  }
+
+  function handleAdminLogout() {
+    try {
+      window.sessionStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+    } catch {
+      // Ignore storage restriction errors
+    }
+    setIsAdminAuthenticated(false);
+  }
+
+  function handleExitAdmin() {
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    setIsAdminRoute(false);
   }
 
   function openBooking(specialtyId?: SpecialtyId, intake?: IntakeSummary | null) {
@@ -136,25 +184,34 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-[#0B132B] overflow-x-clip">
-      {view === 'dashboard' ? (
-        <LawyerDashboard
-          lang={lang}
-          bookings={bookings}
-          cases={cases}
-          intakes={intakes}
-          loading={loadingData}
-          onExitDashboard={() => setView('public')}
-          onToggleLanguage={toggleLanguage}
-          onUpdateBookingStatus={handleUpdateBookingStatus}
-          onCreateCase={handleCreateCase}
-          onUpdateCase={handleUpdateCase}
-        />
+      {isAdminRoute ? (
+        isAdminAuthenticated ? (
+          <LawyerDashboard
+            lang={lang}
+            bookings={bookings}
+            cases={cases}
+            intakes={intakes}
+            loading={loadingData}
+            onExitDashboard={handleExitAdmin}
+            onLogout={handleAdminLogout}
+            onToggleLanguage={toggleLanguage}
+            onUpdateBookingStatus={handleUpdateBookingStatus}
+            onCreateCase={handleCreateCase}
+            onUpdateCase={handleUpdateCase}
+          />
+        ) : (
+          <AdminLoginGate
+            lang={lang}
+            onLoginSuccess={handleAdminLoginSuccess}
+            onExitToPublic={handleExitAdmin}
+            onToggleLanguage={toggleLanguage}
+          />
+        )
       ) : (
         <>
           <Navbar
             lang={lang}
             onBookClick={() => openBooking()}
-            onOpenDashboard={() => setView('dashboard')}
             onToggleLanguage={toggleLanguage}
           />
 
@@ -164,7 +221,6 @@ export default function App() {
               onBookClick={() => openBooking()}
               onOpenAiIntake={() => openAiIntake()}
               onToggleLanguage={toggleLanguage}
-              onOpenDashboard={() => setView('dashboard')}
             />
 
             <AboutAndTeamSection
@@ -184,11 +240,7 @@ export default function App() {
             />
           </main>
 
-          <Footer
-            lang={lang}
-            onOpenDashboard={() => setView('dashboard')}
-            onToggleLanguage={toggleLanguage}
-          />
+          <Footer lang={lang} onToggleLanguage={toggleLanguage} />
 
           {/* Compact Floating AI Intake Trigger (respects 15% mobile sticky cap) */}
           <button

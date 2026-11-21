@@ -15,8 +15,12 @@ import type {
   SpecialtyId,
 } from './src/types/legal';
 import {
+  buildTelegramSendMessagePayload,
   getConsultationFee,
   isValidJordanianPhone,
+  isValidTelegramBotToken,
+  isValidTelegramChatId,
+  normalizeSpecialtyId,
   parseSafiSummaryBlock,
   sanitizeJordanianPhone,
 } from './src/utils/legalWorkflow';
@@ -429,27 +433,86 @@ async function startServer() {
     return res.status(201).json({ intake });
   });
 
-  app.post('/api/inquiries', (req, res) => {
-    const { name, phone, specialtyId, message } = req.body ?? {};
-    if (!name || !phone || !message) {
-      return res.status(400).json({ error: 'Name, phone, and message are required' });
+  async function forwardInquiryToTelegram(inquiry: ContactInquiry): Promise<{
+    configured: boolean;
+    delivered: boolean;
+  }> {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim() ?? '';
+    const chatId = process.env.TELEGRAM_CHAT_ID?.trim() ?? '';
+
+    if (!isValidTelegramBotToken(botToken) || !isValidTelegramChatId(chatId)) {
+      return { configured: false, delivered: false };
     }
-    const cleanPhone = sanitizeJordanianPhone(String(phone));
+
+    const payload = buildTelegramSendMessagePayload(chatId, {
+      name: inquiry.name,
+      phone: inquiry.phone,
+      specialtyId: inquiry.specialtyId,
+      message: inquiry.message,
+    });
+
+    try {
+      const telegramResponse = await fetch(
+        `https://api.telegram.org/bot${botToken}/sendMessage`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(8000),
+        }
+      );
+
+      if (!telegramResponse.ok) {
+        console.error(
+          `Telegram notification rejected with HTTP status ${telegramResponse.status}`
+        );
+        return { configured: true, delivered: false };
+      }
+
+      const result = (await telegramResponse.json()) as { ok?: boolean };
+      return { configured: true, delivered: Boolean(result.ok) };
+    } catch {
+      console.error('Telegram notification request failed');
+      return { configured: true, delivered: false };
+    }
+  }
+
+  app.post('/api/inquiries', async (req, res) => {
+    const { name, phone, specialtyId, message } = req.body ?? {};
+    const cleanName = typeof name === 'string' ? name.trim() : '';
+    const cleanMessage = typeof message === 'string' ? message.trim() : '';
+
+    if (cleanName.length < 2 || cleanName.length > 120) {
+      return res.status(400).json({ error: 'Name must be between 2 and 120 characters' });
+    }
+    if (cleanMessage.length < 5 || cleanMessage.length > 2000) {
+      return res.status(400).json({ error: 'Message must be between 5 and 2000 characters' });
+    }
+
+    const cleanPhone = sanitizeJordanianPhone(String(phone ?? ''));
     if (!isValidJordanianPhone(cleanPhone)) {
       return res.status(400).json({ error: 'Invalid Jordanian phone number' });
     }
+
     const db = readDb();
     const inquiry: ContactInquiry = {
       id: `inq-${Date.now()}`,
-      name: String(name).trim(),
+      name: cleanName,
       phone: cleanPhone,
-      specialtyId: (specialtyId || 'civil') as SpecialtyId,
-      message: String(message).trim(),
+      specialtyId: normalizeSpecialtyId(specialtyId),
+      message: cleanMessage,
       createdAt: new Date().toISOString(),
     };
     db.inquiries.unshift(inquiry);
     writeDb(db);
-    return res.status(201).json({ inquiry });
+
+    const telegramStatus = await forwardInquiryToTelegram(inquiry);
+
+    return res.status(201).json({
+      inquiry,
+      telegramConfigured: telegramStatus.configured,
+      telegramDelivered: telegramStatus.delivered,
+    });
   });
 
   app.post('/api/intake-chat', async (req, res) => {

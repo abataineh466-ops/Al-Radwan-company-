@@ -503,15 +503,92 @@ async function forwardInquiryToTelegram(inquiry: ContactInquiry): Promise<{
   }
 }
 
+export function normalizeVercelApiUrl(rawUrl: string): string {
+  if (!rawUrl || !rawUrl.includes('__path=')) {
+    return rawUrl;
+  }
+
+  try {
+    const parsed = new URL(rawUrl, 'http://localhost');
+    const forwardedPath = parsed.searchParams.get('__path');
+    parsed.searchParams.delete('__path');
+    const remainingQuery = parsed.searchParams.toString();
+    const suffix = remainingQuery ? `?${remainingQuery}` : '';
+
+    if (forwardedPath !== null && /^\/api\/index\/?$/.test(parsed.pathname)) {
+      const cleanSubpath = forwardedPath.replace(/^\/+/, '');
+      return `/api/${cleanSubpath}${suffix}`;
+    }
+
+    return `${parsed.pathname}${suffix}`;
+  } catch {
+    return rawUrl;
+  }
+}
+
+export function isAllowedCorsOrigin(
+  origin: string | undefined,
+  extraAllowedOrigins = process.env.ALLOWED_ORIGINS ?? ''
+): boolean {
+  if (!origin) return false;
+
+  try {
+    const { hostname, protocol } = new URL(origin);
+    if (protocol !== 'https:' && protocol !== 'http:') return false;
+
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.endsWith('.vercel.app') ||
+      hostname.endsWith('.run.app')
+    ) {
+      return true;
+    }
+
+    const customOrigins = extraAllowedOrigins
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return customOrigins.includes(origin);
+  } catch {
+    return false;
+  }
+}
+
 export function createApiApp(): Express {
   const app = express();
+
+  app.use((req, _res, next) => {
+    const normalized = normalizeVercelApiUrl(req.url);
+    if (normalized !== req.url) {
+      req.url = normalized;
+    }
+    next();
+  });
+
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && isAllowedCorsOrigin(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    }
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+    return next();
+  });
+
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/api/health', (_req, res) => {
+    const apiKey = process.env.GEMINI_API_KEY?.trim() ?? '';
     res.json({
       ok: true,
       service: 'rb-law-firm',
       runtime: process.env.VERCEL ? 'vercel-serverless' : 'node-server',
+      geminiConfigured: Boolean(apiKey && apiKey !== 'MY_GEMINI_API_KEY'),
     });
   });
 
@@ -1020,6 +1097,10 @@ export function createApiApp(): Express {
       console.error('Gemini intake error:', message);
       return res.status(502).json({ error: message });
     }
+  });
+
+  app.use('/api', (_req, res) => {
+    return res.status(404).json({ error: 'API route not found' });
   });
 
   return app;

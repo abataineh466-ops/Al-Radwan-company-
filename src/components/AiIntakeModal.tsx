@@ -99,17 +99,15 @@ export function AiIntakeModal({
       });
 
       const contentType = res.headers.get('content-type') ?? '';
-      let data: {
+      if (!contentType.includes('application/json')) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = (await res.json()) as {
         reply?: string;
         summary?: IntakeSummary | null;
         error?: string;
-      } = {};
-
-      if (contentType.includes('application/json')) {
-        data = (await res.json()) as typeof data;
-      } else if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
+      };
 
       if (!res.ok) {
         throw new Error(data.error || `HTTP ${res.status}`);

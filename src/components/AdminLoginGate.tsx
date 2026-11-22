@@ -17,7 +17,6 @@ import type { Language } from '../types/legal.js';
 import { UI_COPY } from '../data/firmContent.js';
 import { verifyAdminCredentials } from '../utils/legalWorkflow.js';
 import { useFirebase } from '../context/FirebaseContext.js';
-import { BOOTSTRAP_ADMIN_EMAIL } from '../firebase.js';
 
 interface AdminLoginGateProps {
   lang: Language;
@@ -59,23 +58,18 @@ export function AdminLoginGate({
   async function handleGoogleLogin() {
     setErrorMsg('');
     clearAuthError();
-    const signedUser = await signInWithGoogle();
-    if (!signedUser) return;
-    if (
-      signedUser.emailVerified &&
-      signedUser.email?.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL
-    ) {
+    const outcome = await signInWithGoogle();
+    if (!outcome) return;
+    if (outcome.isAdmin) {
       onLoginSuccess();
       return;
     }
-    if (!isFirebaseAdmin) {
-      setErrorMsg(
-        lang === 'ar'
-          ? 'هذا الحساب غير مدرج ضمن صلاحيات إدارة شركة الرضوان في Firebase. يرجى الدخول بحساب الإدارة المعتمد أو ببيانات المكتب.'
-          : 'This Google account is not authorized as a firm administrator in Firebase. Please sign in with the authorized admin account or use firm credentials.'
-      );
-      await signOutFirebase();
-    }
+    setErrorMsg(
+      lang === 'ar'
+        ? 'هذا الحساب غير مدرج ضمن صلاحيات إدارة شركة الرضوان في Firebase. يرجى الدخول بحساب الإدارة المعتمد أو ببيانات المكتب.'
+        : 'This Google account is not authorized as a firm administrator in Firebase. Please sign in with the authorized admin account or use firm credentials.'
+    );
+    await signOutFirebase();
   }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -218,6 +212,7 @@ export function AdminLoginGate({
                     onChange={(e) => {
                       setUsername(e.target.value);
                       if (errorMsg) setErrorMsg('');
+                      if (authError) clearAuthError();
                     }}
                     placeholder={lang === 'ar' ? 'أدخل اسم المستخدم' : 'Enter username'}
                     className="w-full min-h-[48px] ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-data focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:border-[#C5A059]"
@@ -251,6 +246,7 @@ export function AdminLoginGate({
                     onChange={(e) => {
                       setPassword(e.target.value);
                       if (errorMsg) setErrorMsg('');
+                      if (authError) clearAuthError();
                     }}
                     placeholder="••••••••••••"
                     className="w-full min-h-[48px] ps-10 pe-12 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-data focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:border-[#C5A059]"

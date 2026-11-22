@@ -1,6 +1,4 @@
-import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import {
-  getAuth,
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithPopup,
@@ -8,11 +6,8 @@ import {
   type Auth,
   type User,
 } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
-import { WORKSPACE_SCOPES } from '../utils/workspaceHelpers';
-
-let firebaseApp: FirebaseApp | null = null;
-let firebaseAuth: Auth | null = null;
+import { auth as sharedFirebaseAuth } from '../firebase.js';
+import { WORKSPACE_SCOPES } from '../utils/workspaceHelpers.js';
 
 /**
  * OAuth access token is kept strictly in JS memory — NEVER stored in
@@ -21,13 +16,7 @@ let firebaseAuth: Auth | null = null;
 let cachedAccessToken: string | null = null;
 
 function ensureFirebaseAuth(): Auth {
-  if (!firebaseApp) {
-    firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-  }
-  if (!firebaseAuth) {
-    firebaseAuth = getAuth(firebaseApp);
-  }
-  return firebaseAuth;
+  return sharedFirebaseAuth;
 }
 
 export function subscribeWorkspaceAuth(

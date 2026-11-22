@@ -1,0 +1,593 @@
+{
+  "entities": {
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized law firm administrator granted Firestore management access.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the authorized administrator."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 5,
+          "maxLength": 160,
+          "description": "Verified Google email address of the administrator."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "Full display name of the administrator."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["managing_partner", "partner", "admin"],
+          "description": "Administrative role level within the firm."
+        },
+        "createdByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the administrator who created this record."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the admin record was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the admin record was last updated."
+        }
+      },
+      "required": ["uid", "email", "displayName", "role", "createdByUid", "createdAt", "updatedAt"]
+    },
+    "FirmLawyer": {
+      "title": "FirmLawyer",
+      "description": "Law firm attorney profile with role, specialties, availability, and delegation privileges.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique identifier for the attorney."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Arabic full name of the attorney."
+        },
+        "nameEn": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 120,
+          "description": "Optional English full name of the attorney."
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 20,
+          "pattern": "^07[789][0-9]{7}$",
+          "description": "Jordanian mobile phone number."
+        },
+        "email": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 160,
+          "description": "Optional firm email address."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "managing_partner",
+            "partner",
+            "senior_lawyer",
+            "associate_lawyer",
+            "legal_consultant",
+            "trainee_lawyer"
+          ],
+          "description": "Firm role classification."
+        },
+        "specialties": {
+          "type": "array",
+          "description": "Bounded list (1 to 7) of legal specialty IDs."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "on_leave"],
+          "description": "Current operational status of the attorney."
+        },
+        "canManageRoles": {
+          "type": "boolean",
+          "description": "Whether the attorney can manage team roles and case transfers."
+        },
+        "joinedAt": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 32,
+          "description": "ISO date string when the attorney joined the firm."
+        },
+        "createdByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the creator."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last modification."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "phone",
+        "role",
+        "specialties",
+        "status",
+        "canManageRoles",
+        "joinedAt",
+        "createdByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LegalCase": {
+      "title": "LegalCase",
+      "description": "Active or closed legal case managed by Al-Radwan Law Firm.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique document ID."
+        },
+        "caseNumber": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 64,
+          "description": "Court or firm internal case reference number."
+        },
+        "clientName": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Full name of the client."
+        },
+        "clientPhone": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 20,
+          "pattern": "^07[789][0-9]{7}$",
+          "description": "Jordanian mobile number of the client."
+        },
+        "specialtyId": {
+          "type": "string",
+          "enum": [
+            "civil",
+            "sharia",
+            "criminal",
+            "commercial",
+            "labor",
+            "administrative",
+            "arbitration"
+          ],
+          "description": "Legal practice specialty."
+        },
+        "courtName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 160,
+          "description": "Competent Jordanian court or arbitration tribunal."
+        },
+        "assignedLawyer": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Full name of the assigned attorney."
+        },
+        "stage": {
+          "type": "string",
+          "enum": ["intake", "drafting", "litigation", "execution", "closed"],
+          "description": "Current procedural stage of the legal case."
+        },
+        "nextHearingDate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Scheduled date for the next hearing or deadline."
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 2000,
+          "description": "Structured legal case summary."
+        },
+        "createdByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the creator."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the case was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the case was last updated."
+        }
+      },
+      "required": [
+        "id",
+        "caseNumber",
+        "clientName",
+        "clientPhone",
+        "specialtyId",
+        "courtName",
+        "assignedLawyer",
+        "stage",
+        "nextHearingDate",
+        "summary",
+        "createdByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ConsultationBooking": {
+      "title": "ConsultationBooking",
+      "description": "Client legal consultation booking (in-person in Irbid or online).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique document ID."
+        },
+        "referenceCode": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 40,
+          "description": "Human-readable booking reference code."
+        },
+        "clientName": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Full name of the client."
+        },
+        "clientPhone": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 20,
+          "pattern": "^07[789][0-9]{7}$",
+          "description": "Jordanian mobile phone number."
+        },
+        "specialtyId": {
+          "type": "string",
+          "enum": [
+            "civil",
+            "sharia",
+            "criminal",
+            "commercial",
+            "labor",
+            "administrative",
+            "arbitration"
+          ],
+          "description": "Requested legal specialty."
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["in_person", "online"],
+          "description": "In-person office visit or online consultation."
+        },
+        "date": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 32,
+          "description": "Preferred consultation date."
+        },
+        "timeSlot": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 32,
+          "description": "Preferred consultation time slot."
+        },
+        "feeJod": {
+          "type": "number",
+          "description": "Consultation fee in Jordanian Dinars (0 for free initial consultation)."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["free", "cliq", "card"],
+          "description": "Payment or complimentary consultation type."
+        },
+        "paymentReference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Payment reference code or FREE."
+        },
+        "otpVerified": {
+          "type": "boolean",
+          "description": "Whether client phone OTP verification succeeded."
+        },
+        "caseSummary": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 2000,
+          "description": "Optional brief summary of the consultation topic."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "confirmed", "completed", "cancelled"],
+          "description": "Current booking lifecycle status."
+        },
+        "assignedLawyer": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Assigned attorney name."
+        },
+        "createdByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the creator."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last modification."
+        }
+      },
+      "required": [
+        "id",
+        "referenceCode",
+        "clientName",
+        "clientPhone",
+        "specialtyId",
+        "mode",
+        "date",
+        "timeSlot",
+        "feeJod",
+        "paymentMethod",
+        "paymentReference",
+        "otpVerified",
+        "status",
+        "assignedLawyer",
+        "createdByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "IntakeSummary": {
+      "title": "IntakeSummary",
+      "description": "Structured Al-Safi AI legal intake summary prepared for the legal team.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique intake summary document ID."
+        },
+        "clientName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "Name of the prospective client."
+        },
+        "clientPhone": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 20,
+          "pattern": "^07[789][0-9]{7}$",
+          "description": "Jordanian mobile phone number."
+        },
+        "specialtyId": {
+          "type": "string",
+          "enum": [
+            "civil",
+            "sharia",
+            "criminal",
+            "commercial",
+            "labor",
+            "administrative",
+            "arbitration"
+          ],
+          "description": "Detected legal specialty."
+        },
+        "factsSummary": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 2000,
+          "description": "Concise structured case facts (Al-Safi)."
+        },
+        "documentsStatus": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 500,
+          "description": "Status of client supporting documents."
+        },
+        "urgency": {
+          "type": "string",
+          "enum": ["normal", "urgent"],
+          "description": "Urgency classification."
+        },
+        "recommendedMode": {
+          "type": "string",
+          "enum": ["in_person", "online"],
+          "description": "Recommended consultation channel."
+        },
+        "convertedToCaseId": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 128,
+          "description": "Optional LegalCase ID if converted."
+        },
+        "createdByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the creator."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last modification."
+        }
+      },
+      "required": [
+        "id",
+        "clientName",
+        "clientPhone",
+        "specialtyId",
+        "factsSummary",
+        "documentsStatus",
+        "urgency",
+        "recommendedMode",
+        "createdByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ContactInquiry": {
+      "title": "ContactInquiry",
+      "description": "Inbound contact inquiry sent through the firm website contact form.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique inquiry document ID."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "Sender full name."
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 20,
+          "pattern": "^07[789][0-9]{7}$",
+          "description": "Sender Jordanian phone number."
+        },
+        "specialtyId": {
+          "type": "string",
+          "enum": [
+            "civil",
+            "sharia",
+            "criminal",
+            "commercial",
+            "labor",
+            "administrative",
+            "arbitration"
+          ],
+          "description": "Selected legal specialty."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 2000,
+          "description": "Client inquiry message text."
+        },
+        "createdByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the creator."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last modification."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "phone",
+        "specialtyId",
+        "message",
+        "createdByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Authorized law firm administrators collection."
+    },
+    "/lawyers/{lawyerId}": {
+      "schema": { "$ref": "#/entities/FirmLawyer" },
+      "description": "Firm attorneys, roles, specialties, and workload eligibility."
+    },
+    "/cases/{caseId}": {
+      "schema": { "$ref": "#/entities/LegalCase" },
+      "description": "Legal cases tracked across Jordanian courts and execution departments."
+    },
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/ConsultationBooking" },
+      "description": "Client consultation bookings (in-person in Irbid or online)."
+    },
+    "/intakes/{intakeId}": {
+      "schema": { "$ref": "#/entities/IntakeSummary" },
+      "description": "AI Legal Intake Al-Safi structured case summaries."
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/ContactInquiry" },
+      "description": "Website contact form inquiries synced for live dashboard notifications."
+    }
+  }
+}

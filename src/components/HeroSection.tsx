@@ -7,8 +7,8 @@ import {
   MessageSquareText,
   Phone,
 } from 'lucide-react';
-import type { Language } from '../types/legal';
-import { ASSET_IMAGES, FIRM_CONTACT, UI_COPY } from '../data/firmContent';
+import type { Language } from '../types/legal.js';
+import { ASSET_IMAGES, FIRM_CONTACT, UI_COPY } from '../data/firmContent.js';
 
 interface HeroSectionProps {
   lang: Language;

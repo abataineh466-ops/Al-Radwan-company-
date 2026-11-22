@@ -8,7 +8,7 @@ import type {
   LegalCase,
   PaymentMethod,
   SpecialtyId,
-} from '../types/legal';
+} from '../types/legal.js';
 
 export const CONSULTATION_FEES_JOD: Record<ConsultationMode, number> = {
   in_person: 0,

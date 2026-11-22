@@ -9,8 +9,8 @@ import type {
   LawyerRole,
   LegalCase,
   SpecialtyId,
-} from '../types/legal';
-import { SPECIALTIES } from '../data/firmContent';
+} from '../types/legal.js';
+import { SPECIALTIES } from '../data/firmContent.js';
 
 export const VALID_LAWYER_ROLES: readonly LawyerRole[] = [
   'managing_partner',

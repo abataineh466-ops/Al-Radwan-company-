@@ -1,6 +1,6 @@
 import { Award, Scale } from 'lucide-react';
-import type { Language } from '../types/legal';
-import { LAWYERS, UI_COPY, WHY_US_PILLARS } from '../data/firmContent';
+import type { Language } from '../types/legal.js';
+import { LAWYERS, UI_COPY, WHY_US_PILLARS } from '../data/firmContent.js';
 
 interface AboutAndTeamSectionProps {
   lang: Language;

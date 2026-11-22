@@ -15,12 +15,12 @@ import type {
   IntakeSummary,
   Language,
   SpecialtyId,
-} from '../types/legal';
-import { FIRM_CONTACT, SPECIALTIES } from '../data/firmContent';
+} from '../types/legal.js';
+import { FIRM_CONTACT, SPECIALTIES } from '../data/firmContent.js';
 import {
   extractOtpFromClipboard,
   validateBookingCheckout,
-} from '../utils/legalWorkflow';
+} from '../utils/legalWorkflow.js';
 
 interface BookingModalProps {
   isOpen: boolean;

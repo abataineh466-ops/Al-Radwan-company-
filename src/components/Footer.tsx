@@ -1,6 +1,6 @@
 import { Lock, Phone, Scale } from 'lucide-react';
-import type { Language } from '../types/legal';
-import { FIRM_CONTACT, UI_COPY } from '../data/firmContent';
+import type { Language } from '../types/legal.js';
+import { FIRM_CONTACT, UI_COPY } from '../data/firmContent.js';
 
 interface FooterProps {
   lang: Language;

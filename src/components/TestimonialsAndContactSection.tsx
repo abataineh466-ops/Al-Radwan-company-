@@ -9,15 +9,15 @@ import {
   Quote,
   Send,
 } from 'lucide-react';
-import type { Language, SpecialtyId } from '../types/legal';
+import type { Language, SpecialtyId } from '../types/legal.js';
 import {
   ASSET_IMAGES,
   FIRM_CONTACT,
   SPECIALTIES,
   TESTIMONIALS,
   UI_COPY,
-} from '../data/firmContent';
-import { isValidJordanianPhone } from '../utils/legalWorkflow';
+} from '../data/firmContent.js';
+import { isValidJordanianPhone } from '../utils/legalWorkflow.js';
 
 interface TestimonialsAndContactSectionProps {
   lang: Language;

@@ -10,9 +10,9 @@ import {
   Send,
   X,
 } from 'lucide-react';
-import type { ChatMessage, IntakeSummary, Language, SpecialtyId } from '../types/legal';
-import { SPECIALTIES } from '../data/firmContent';
-import { formatFriendlyAiError, stripSafiJsonBlock } from '../utils/legalWorkflow';
+import type { ChatMessage, IntakeSummary, Language, SpecialtyId } from '../types/legal.js';
+import { SPECIALTIES } from '../data/firmContent.js';
+import { formatFriendlyAiError, stripSafiJsonBlock } from '../utils/legalWorkflow.js';
 
 interface AiIntakeModalProps {
   isOpen: boolean;

@@ -1,6 +1,6 @@
 import { BellRing, Inbox, PhoneCall, X } from 'lucide-react';
-import type { ContactInquiry, Language } from '../types/legal';
-import { formatInquiryToastPreview } from '../utils/inquiryNotifications';
+import type { ContactInquiry, Language } from '../types/legal.js';
+import { formatInquiryToastPreview } from '../utils/inquiryNotifications.js';
 
 interface InquiryToastStackProps {
   lang: Language;

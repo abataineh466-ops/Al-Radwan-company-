@@ -13,8 +13,8 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import type { Language, SpecialtyId } from '../types/legal';
-import { CORE_SERVICES, SPECIALTIES, type SpecialtyContent } from '../data/firmContent';
+import type { Language, SpecialtyId } from '../types/legal.js';
+import { CORE_SERVICES, SPECIALTIES, type SpecialtyContent } from '../data/firmContent.js';
 
 interface SpecialtiesSectionProps {
   lang: Language;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MessageSquareText } from 'lucide-react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import type {
@@ -13,18 +13,33 @@ import type {
   LawyerStatus,
   LegalCase,
   SpecialtyId,
-} from './types/legal';
-import { Navbar } from './components/Navbar';
-import { HeroSection } from './components/HeroSection';
-import { AboutAndTeamSection } from './components/AboutAndTeamSection';
-import { SpecialtiesSection } from './components/SpecialtiesSection';
-import { TestimonialsAndContactSection } from './components/TestimonialsAndContactSection';
-import { Footer } from './components/Footer';
-import { AiIntakeModal } from './components/AiIntakeModal';
-import { BookingModal } from './components/BookingModal';
-import { LawyerDashboard } from './components/LawyerDashboard';
-import { AdminLoginGate } from './components/AdminLoginGate';
-import { ADMIN_SESSION_STORAGE_KEY, isAdminHashRoute } from './utils/legalWorkflow';
+} from './types/legal.js';
+import { Navbar } from './components/Navbar.js';
+import { HeroSection } from './components/HeroSection.js';
+import { AboutAndTeamSection } from './components/AboutAndTeamSection.js';
+import { SpecialtiesSection } from './components/SpecialtiesSection.js';
+import { TestimonialsAndContactSection } from './components/TestimonialsAndContactSection.js';
+import { Footer } from './components/Footer.js';
+import { AiIntakeModal } from './components/AiIntakeModal.js';
+import { BookingModal } from './components/BookingModal.js';
+import { LawyerDashboard } from './components/LawyerDashboard.js';
+import { AdminLoginGate } from './components/AdminLoginGate.js';
+import { ADMIN_SESSION_STORAGE_KEY, isAdminHashRoute } from './utils/legalWorkflow.js';
+import { useFirebase } from './context/FirebaseContext.js';
+import { BOOTSTRAP_ADMIN_EMAIL } from './firebase.js';
+import {
+  bulkTransferInFirestore,
+  createCaseInFirestore,
+  createLawyerInFirestore,
+  deleteLawyerWithHandoverInFirestore,
+  sanitizeFirestoreId,
+  seedFirestoreIfEmpty,
+  subscribeFirmCollections,
+  syncInquiriesToFirestore,
+  updateBookingInFirestore,
+  updateCaseInFirestore,
+  updateLawyerInFirestore,
+} from './services/firestoreFirmService.js';
 
 function readAdminSession(): boolean {
   try {
@@ -35,6 +50,7 @@ function readAdminSession(): boolean {
 }
 
 export default function App() {
+  const { user, authReady, isFirebaseAdmin, signInWithGoogle, signOutFirebase } = useFirebase();
   const [lang, setLang] = useState<Language>('ar');
   // Always land on the public client homepage first on open/reload
   const [isAdminRoute, setIsAdminRoute] = useState<boolean>(false);
@@ -54,6 +70,14 @@ export default function App() {
   const [lawyers, setLawyers] = useState<FirmLawyer[]>([]);
   const [loadingData, setLoadingData] = useState(false);
 
+  const firestoreInquiryIdsRef = useRef<Set<string>>(new Set());
+  const isFirestoreActive = Boolean(
+    isAdminRoute && isAdminAuthenticated && authReady && user && isFirebaseAdmin
+  );
+  const isBootstrapAdmin = Boolean(
+    user?.emailVerified && user.email?.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL
+  );
+
   // Sync HTML lang & RTL/LTR direction automatically
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -68,18 +92,23 @@ export default function App() {
     }
   }, []);
 
+  async function fetchApiDashboardSnapshot() {
+    const res = await fetch('/api/dashboard-data');
+    if (!res.ok) return null;
+    return (await res.json()) as {
+      bookings: ConsultationBooking[];
+      cases: LegalCase[];
+      intakes: IntakeSummary[];
+      inquiries?: ContactInquiry[];
+      lawyers?: FirmLawyer[];
+    };
+  }
+
   async function fetchDashboardData() {
     setLoadingData(true);
     try {
-      const res = await fetch('/api/dashboard-data');
-      if (!res.ok) return;
-      const data = (await res.json()) as {
-        bookings: ConsultationBooking[];
-        cases: LegalCase[];
-        intakes: IntakeSummary[];
-        inquiries?: ContactInquiry[];
-        lawyers?: FirmLawyer[];
-      };
+      const data = await fetchApiDashboardSnapshot();
+      if (!data) return;
       setBookings(data.bookings ?? []);
       setCases(data.cases ?? []);
       setIntakes(data.intakes ?? []);
@@ -90,12 +119,68 @@ export default function App() {
     }
   }
 
-  // Only load private firm dashboard data after staff authenticates
+  // Load dashboard data: real-time Cloud Firestore when signed in with Firebase Auth,
+  // or Express API fallback when using local firm credentials.
   useEffect(() => {
-    if (isAdminRoute && isAdminAuthenticated) {
-      fetchDashboardData();
+    if (!isAdminRoute || !isAdminAuthenticated) return;
+
+    if (isFirestoreActive && user) {
+      let cancelled = false;
+      setLoadingData(true);
+
+      // Migrate seed/API data into Firestore if the cloud database is empty on first run
+      void fetchApiDashboardSnapshot()
+        .then(async (apiData) => {
+          if (cancelled || !apiData) return;
+          await seedFirestoreIfEmpty({
+            lawyers: apiData.lawyers ?? [],
+            cases: apiData.cases ?? [],
+            bookings: apiData.bookings ?? [],
+            intakes: apiData.intakes ?? [],
+            inquiries: apiData.inquiries ?? [],
+          });
+        })
+        .catch(() => {
+          // Ignore API bootstrap failures when running purely on Firestore
+        });
+
+      const unsubscribe = subscribeFirmCollections(user.uid, isBootstrapAdmin, {
+        onLawyers: (items) => {
+          if (!cancelled) {
+            setLawyers(items);
+            setLoadingData(false);
+          }
+        },
+        onCases: (items) => {
+          if (!cancelled) setCases(items);
+        },
+        onBookings: (items) => {
+          if (!cancelled) setBookings(items);
+        },
+        onIntakes: (items) => {
+          if (!cancelled) setIntakes(items);
+        },
+        onInquiries: (items) => {
+          if (!cancelled) {
+            firestoreInquiryIdsRef.current = new Set(
+              items.map((item) => sanitizeFirestoreId(item.id, 'inq'))
+            );
+            setInquiries(items);
+          }
+        },
+        onError: () => {
+          if (!cancelled) setLoadingData(false);
+        },
+      });
+
+      return () => {
+        cancelled = true;
+        unsubscribe();
+      };
     }
-  }, [isAdminRoute, isAdminAuthenticated]);
+
+    void fetchDashboardData();
+  }, [isAdminRoute, isAdminAuthenticated, isFirestoreActive, isBootstrapAdmin, user]);
 
   function toggleLanguage() {
     setLang((prev) => (prev === 'ar' ? 'en' : 'ar'));
@@ -117,6 +202,13 @@ export default function App() {
       // Ignore storage restriction errors
     }
     setIsAdminAuthenticated(false);
+    if (user) {
+      void signOutFirebase();
+    }
+  }
+
+  async function handleConnectFirebase() {
+    await signInWithGoogle();
   }
 
   function handleOpenLawyerLogin() {
@@ -147,6 +239,10 @@ export default function App() {
     id: string,
     updates: { status?: BookingStatus; assignedLawyer?: string }
   ) {
+    if (isFirestoreActive) {
+      await updateBookingInFirestore(id, updates);
+      return;
+    }
     const res = await fetch(`/api/bookings/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -169,6 +265,10 @@ export default function App() {
     summary: string;
     intakeId?: string;
   }) {
+    if (isFirestoreActive) {
+      await createCaseInFirestore(payload);
+      return;
+    }
     const res = await fetch('/api/cases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -191,6 +291,10 @@ export default function App() {
     id: string,
     updates: { stage?: CaseStage; nextHearingDate?: string; assignedLawyer?: string }
   ) {
+    if (isFirestoreActive) {
+      await updateCaseInFirestore(id, updates);
+      return;
+    }
     const res = await fetch(`/api/cases/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -212,6 +316,14 @@ export default function App() {
     status: LawyerStatus;
     canManageRoles: boolean;
   }): Promise<{ ok: boolean; error?: string }> {
+    if (isFirestoreActive) {
+      try {
+        await createLawyerInFirestore(payload);
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'Firestore error' };
+      }
+    }
     const res = await fetch('/api/lawyers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -234,6 +346,14 @@ export default function App() {
       specialties: SpecialtyId[];
     }>
   ): Promise<{ ok: boolean; error?: string }> {
+    if (isFirestoreActive) {
+      try {
+        await updateLawyerInFirestore(id, updates);
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'Firestore error' };
+      }
+    }
     const res = await fetch(`/api/lawyers/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -263,6 +383,21 @@ export default function App() {
     reassignedCases?: number;
     reassignedBookings?: number;
   }> {
+    if (isFirestoreActive) {
+      const target = lawyers.find((l) => l.id === id);
+      if (!target) return { ok: false, error: 'Lawyer not found' };
+      try {
+        const result = await deleteLawyerWithHandoverInFirestore(
+          target,
+          reassignToLawyerName,
+          cases,
+          bookings
+        );
+        return { ok: true, ...result };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'Firestore error' };
+      }
+    }
     const res = await fetch(`/api/lawyers/${id}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -299,6 +434,14 @@ export default function App() {
     transferredCases?: number;
     transferredBookings?: number;
   }> {
+    if (isFirestoreActive) {
+      try {
+        const result = await bulkTransferInFirestore(payload, cases, bookings);
+        return { ok: true, ...result };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'Firestore error' };
+      }
+    }
     const res = await fetch('/api/admin/transfer-cases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -323,6 +466,15 @@ export default function App() {
     return { ok: false, error: data.error };
   }
 
+  function handleInquiriesSynced(latest: ContactInquiry[]) {
+    setInquiries(latest);
+    if (isFirestoreActive) {
+      void syncInquiriesToFirestore(latest, firestoreInquiryIdsRef.current).catch(() => {
+        // Structured error logged in handleFirestoreError
+      });
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-white text-[#0B132B] overflow-x-clip">
       {isAdminRoute ? (
@@ -345,7 +497,9 @@ export default function App() {
             onUpdateLawyer={handleUpdateLawyer}
             onDeleteLawyer={handleDeleteLawyer}
             onBulkTransfer={handleBulkTransfer}
-            onInquiriesSynced={setInquiries}
+            onInquiriesSynced={handleInquiriesSynced}
+            isFirebaseConnected={isFirestoreActive}
+            onConnectFirebase={handleConnectFirebase}
           />
         ) : (
           <AdminLoginGate

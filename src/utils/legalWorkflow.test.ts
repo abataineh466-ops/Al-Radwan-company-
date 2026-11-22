@@ -22,8 +22,8 @@ import {
   stripSafiJsonBlock,
   validateBookingCheckout,
   verifyAdminCredentials,
-} from './legalWorkflow';
-import type { ConsultationBooking, IntakeSummary, LegalCase } from '../types/legal';
+} from './legalWorkflow.js';
+import type { ConsultationBooking, IntakeSummary, LegalCase } from '../types/legal.js';
 
 test('consultations are free and formatted cleanly in Arabic and English', () => {
   assert.equal(getConsultationFee('in_person'), 0);

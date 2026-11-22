@@ -1,5 +1,5 @@
-import type { ContactInquiry, Language } from '../types/legal';
-import { SPECIALTIES } from '../data/firmContent';
+import type { ContactInquiry, Language } from '../types/legal.js';
+import { SPECIALTIES } from '../data/firmContent.js';
 
 /**
  * Identifies newly arrived contact inquiries that were not present in the

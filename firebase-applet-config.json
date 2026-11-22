@@ -3,6 +3,7 @@
   "appId": "1:984004700095:web:2bce94e521e174d3f9230a",
   "apiKey": "AIzaSyDTVyDy7INfAR3yDXIyeB2v1KcMwSulWQo",
   "authDomain": "gen-lang-client-0739175263.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-rblawfirm-1201289f-747d-4be9-8510-156f6728aa2d",
   "storageBucket": "gen-lang-client-0739175263.firebasestorage.app",
   "messagingSenderId": "984004700095",
   "measurementId": "",

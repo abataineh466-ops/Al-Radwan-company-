@@ -4,8 +4,8 @@ import {
   detectNewInquiries,
   formatInquiryToastPreview,
   mergeUniqueInquiries,
-} from './inquiryNotifications.ts';
-import type { ContactInquiry } from '../types/legal.ts';
+} from './inquiryNotifications.js';
+import type { ContactInquiry } from '../types/legal.js';
 
 const baseInquiries: ContactInquiry[] = [
   {

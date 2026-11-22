@@ -6,8 +6,8 @@ import type {
   Language,
   LegalCase,
   SpecialtyId,
-} from '../types/legal';
-import { SPECIALTIES } from '../data/firmContent';
+} from '../types/legal.js';
+import { SPECIALTIES } from '../data/firmContent.js';
 
 /**
  * Full set of Google Drive & Google Sheets OAuth scopes configured for the app.

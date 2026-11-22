@@ -19,9 +19,9 @@ import type {
   LawyerStatus,
   LegalCase,
   SpecialtyId,
-} from '../types/legal';
-import { SPECIALTIES } from '../data/firmContent';
-import { LAWYER_ROLE_META, VALID_LAWYER_ROLES } from '../utils/adminAnalytics';
+} from '../types/legal.js';
+import { SPECIALTIES } from '../data/firmContent.js';
+import { LAWYER_ROLE_META, VALID_LAWYER_ROLES } from '../utils/adminAnalytics.js';
 
 interface AdminTeamManagementPanelProps {
   lang: Language;

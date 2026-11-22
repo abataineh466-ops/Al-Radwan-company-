@@ -1,4 +1,4 @@
-import type { Language, SpecialtyId } from '../types/legal';
+import type { Language, SpecialtyId } from '../types/legal.js';
 
 export interface SpecialtyContent {
   id: SpecialtyId;

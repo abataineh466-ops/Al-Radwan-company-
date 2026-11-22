@@ -4,14 +4,14 @@ import {
   computeAdminFirmAnalytics,
   normalizeLawyerRole,
   pickRecommendedLawyerForSpecialty,
-} from './adminAnalytics.ts';
+} from './adminAnalytics.js';
 import type {
   ConsultationBooking,
   ContactInquiry,
   FirmLawyer,
   IntakeSummary,
   LegalCase,
-} from '../types/legal.ts';
+} from '../types/legal.js';
 
 const sampleLawyers: FirmLawyer[] = [
   {

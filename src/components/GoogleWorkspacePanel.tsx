@@ -27,14 +27,14 @@ import type {
   IntakeSummary,
   Language,
   LegalCase,
-} from '../types/legal';
+} from '../types/legal.js';
 import {
   clearWorkspaceAccessToken,
   getWorkspaceAccessToken,
   signInWithGoogleWorkspace,
   signOutGoogleWorkspace,
   subscribeWorkspaceAuth,
-} from '../services/googleWorkspaceAuth';
+} from '../services/googleWorkspaceAuth.js';
 import {
   createDriveFolder,
   createFirmSpreadsheet,
@@ -48,7 +48,7 @@ import {
   uploadDriveFile,
   type DriveFileItem,
   type SpreadsheetMeta,
-} from '../services/googleWorkspaceApi';
+} from '../services/googleWorkspaceApi.js';
 import {
   buildBookingsSheetRows,
   buildCasesSheetRows,
@@ -56,7 +56,7 @@ import {
   classifyDriveMimeType,
   formatDriveFileSize,
   type DriveFileFilter,
-} from '../utils/workspaceHelpers';
+} from '../utils/workspaceHelpers.js';
 
 interface GoogleWorkspacePanelProps {
   lang: Language;

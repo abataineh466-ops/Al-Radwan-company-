@@ -6,6 +6,7 @@ import {
   Bell,
   Briefcase,
   CalendarCheck,
+  Cloud,
   FilePlus2,
   Globe,
   HardDrive,
@@ -18,10 +19,10 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { AdminAnalyticsPanel } from './AdminAnalyticsPanel';
-import { AdminTeamManagementPanel } from './AdminTeamManagementPanel';
-import { GoogleWorkspacePanel } from './GoogleWorkspacePanel';
-import { InquiryToastStack } from './InquiryToastStack';
+import { AdminAnalyticsPanel } from './AdminAnalyticsPanel.js';
+import { AdminTeamManagementPanel } from './AdminTeamManagementPanel.js';
+import { GoogleWorkspacePanel } from './GoogleWorkspacePanel.js';
+import { InquiryToastStack } from './InquiryToastStack.js';
 import type {
   BookingStatus,
   CaseStage,
@@ -34,19 +35,19 @@ import type {
   LawyerStatus,
   LegalCase,
   SpecialtyId,
-} from '../types/legal';
-import { SPECIALTIES } from '../data/firmContent';
+} from '../types/legal.js';
+import { SPECIALTIES } from '../data/firmContent.js';
 import {
   computeDashboardMetrics,
   filterBookings,
   filterCases,
   formatJodCurrency,
-} from '../utils/legalWorkflow';
+} from '../utils/legalWorkflow.js';
 import {
   detectNewInquiries,
   formatInquiryToastPreview,
   mergeUniqueInquiries,
-} from '../utils/inquiryNotifications';
+} from '../utils/inquiryNotifications.js';
 
 type DashboardTab = 'analytics' | 'appointments' | 'cases' | 'team' | 'intakes' | 'workspace';
 
@@ -119,6 +120,8 @@ interface LawyerDashboardProps {
     transferredBookings?: number;
   }>;
   onInquiriesSynced: (latest: ContactInquiry[]) => void;
+  isFirebaseConnected?: boolean;
+  onConnectFirebase?: () => Promise<void>;
 }
 
 function playSubtleNotificationChime(): void {
@@ -166,6 +169,8 @@ export function LawyerDashboard({
   onDeleteLawyer,
   onBulkTransfer,
   onInquiriesSynced,
+  isFirebaseConnected = false,
+  onConnectFirebase,
 }: LawyerDashboardProps) {
   const [activeTab, setActiveTab] = useState<DashboardTab>('analytics');
   const [transferPresetLawyer, setTransferPresetLawyer] = useState<string | undefined>(undefined);
@@ -395,6 +400,18 @@ export function LawyerDashboard({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {onConnectFirebase && !isFirebaseConnected && (
+              <button
+                type="button"
+                onClick={() => void onConnectFirebase()}
+                className="min-h-[40px] px-3 py-1.5 rounded-lg border border-[#C5A059]/50 bg-[#C5A059]/10 hover:bg-[#C5A059]/20 text-xs font-bold text-[#C5A059] flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              >
+                <Cloud className="w-4 h-4" aria-hidden="true" />
+                <span className="hidden sm:inline">
+                  {lang === 'ar' ? 'ربط Firebase' : 'Sync Firebase'}
+                </span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => openInquiriesInbox()}

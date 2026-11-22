@@ -1,0 +1,400 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // PILLAR 0: Global Default-Deny Safety Net
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // PHASE 3: Hardened Global Primitives (No DB reads in static helpers)
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(ownerUid) {
+      return isVerified() && ownerUid is string && request.auth.uid == ownerUid;
+    }
+
+    // Bootstrapped primary firm administrator (verified Google email only - zero DB reads)
+    function isBootstrapAdmin() {
+      return isVerified() && request.auth.token.email == 'abataineh466@gmail.com';
+    }
+
+    // Full admin check for single-document operations (never used inside allow list)
+    function isAdmin() {
+      return isBootstrapAdmin()
+        || (isVerified() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isNonEmptyString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isOptionalString(data, field, maxLen) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    function isValidJordanianPhone(phone) {
+      return phone is string && phone.size() >= 9 && phone.size() <= 20 && phone.matches('^07[789][0-9]{7}$');
+    }
+
+    function isValidSpecialty(spec) {
+      return spec in ['civil', 'sharia', 'criminal', 'commercial', 'labor', 'administrative', 'arbitration'];
+    }
+
+    function isValidLawyerRole(role) {
+      return role in ['managing_partner', 'partner', 'senior_lawyer', 'associate_lawyer', 'legal_consultant', 'trainee_lawyer'];
+    }
+
+    function isValidBookingStatus(status) {
+      return status in ['pending', 'confirmed', 'completed', 'cancelled'];
+    }
+
+    function isValidCaseStage(stage) {
+      return stage in ['intake', 'drafting', 'litigation', 'execution', 'closed'];
+    }
+
+    // =========================================================================
+    // PILLAR 2: Standalone Validation Blueprints (synchronized with firebase-blueprint.json)
+    // =========================================================================
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'createdByUid', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'createdByUid', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && isNonEmptyString(data.email, 5, 160)
+        && isNonEmptyString(data.displayName, 2, 120)
+        && (data.role in ['managing_partner', 'partner', 'admin'])
+        && isValidId(data.createdByUid)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFirmLawyer(data) {
+      return data.keys().hasAll([
+          'id', 'name', 'phone', 'role', 'specialties', 'status',
+          'canManageRoles', 'joinedAt', 'createdByUid', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'name', 'nameEn', 'phone', 'email', 'role', 'specialties', 'status',
+          'canManageRoles', 'joinedAt', 'createdByUid', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isNonEmptyString(data.name, 3, 120)
+        && isOptionalString(data, 'nameEn', 120)
+        && isValidJordanianPhone(data.phone)
+        && isOptionalString(data, 'email', 160)
+        && isValidLawyerRole(data.role)
+        && data.specialties is list
+        && data.specialties.size() >= 1
+        && data.specialties.size() <= 7
+        && data.specialties[0] is string
+        && data.specialties.hasOnly(['civil', 'sharia', 'criminal', 'commercial', 'labor', 'administrative', 'arbitration'])
+        && (data.status in ['active', 'on_leave'])
+        && data.canManageRoles is bool
+        && isNonEmptyString(data.joinedAt, 4, 32)
+        && isValidId(data.createdByUid)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidLegalCase(data) {
+      return data.keys().hasAll([
+          'id', 'caseNumber', 'clientName', 'clientPhone', 'specialtyId',
+          'courtName', 'assignedLawyer', 'stage', 'nextHearingDate',
+          'summary', 'createdByUid', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'caseNumber', 'clientName', 'clientPhone', 'specialtyId',
+          'courtName', 'assignedLawyer', 'stage', 'nextHearingDate',
+          'summary', 'createdByUid', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isNonEmptyString(data.caseNumber, 3, 64)
+        && isNonEmptyString(data.clientName, 3, 120)
+        && isValidJordanianPhone(data.clientPhone)
+        && isValidSpecialty(data.specialtyId)
+        && isNonEmptyString(data.courtName, 2, 160)
+        && isNonEmptyString(data.assignedLawyer, 3, 120)
+        && isValidCaseStage(data.stage)
+        && isNonEmptyString(data.nextHearingDate, 1, 40)
+        && isNonEmptyString(data.summary, 3, 2000)
+        && isValidId(data.createdByUid)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidConsultationBooking(data) {
+      return data.keys().hasAll([
+          'id', 'referenceCode', 'clientName', 'clientPhone', 'specialtyId',
+          'mode', 'date', 'timeSlot', 'feeJod', 'paymentMethod',
+          'paymentReference', 'otpVerified', 'status', 'assignedLawyer',
+          'createdByUid', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'referenceCode', 'clientName', 'clientPhone', 'specialtyId',
+          'mode', 'date', 'timeSlot', 'feeJod', 'paymentMethod',
+          'paymentReference', 'otpVerified', 'caseSummary', 'status',
+          'assignedLawyer', 'createdByUid', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isNonEmptyString(data.referenceCode, 3, 40)
+        && isNonEmptyString(data.clientName, 3, 120)
+        && isValidJordanianPhone(data.clientPhone)
+        && isValidSpecialty(data.specialtyId)
+        && (data.mode in ['in_person', 'online'])
+        && isNonEmptyString(data.date, 4, 32)
+        && isNonEmptyString(data.timeSlot, 3, 32)
+        && data.feeJod is number
+        && data.feeJod >= 0
+        && data.feeJod <= 5000
+        && (data.paymentMethod in ['free', 'cliq', 'card'])
+        && isNonEmptyString(data.paymentReference, 1, 64)
+        && data.otpVerified is bool
+        && isOptionalString(data, 'caseSummary', 2000)
+        && isValidBookingStatus(data.status)
+        && isNonEmptyString(data.assignedLawyer, 3, 120)
+        && isValidId(data.createdByUid)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidIntakeSummary(data) {
+      return data.keys().hasAll([
+          'id', 'clientName', 'clientPhone', 'specialtyId', 'factsSummary',
+          'documentsStatus', 'urgency', 'recommendedMode',
+          'createdByUid', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'clientName', 'clientPhone', 'specialtyId', 'factsSummary',
+          'documentsStatus', 'urgency', 'recommendedMode', 'convertedToCaseId',
+          'createdByUid', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isNonEmptyString(data.clientName, 2, 120)
+        && isValidJordanianPhone(data.clientPhone)
+        && isValidSpecialty(data.specialtyId)
+        && isNonEmptyString(data.factsSummary, 5, 2000)
+        && isNonEmptyString(data.documentsStatus, 2, 500)
+        && (data.urgency in ['normal', 'urgent'])
+        && (data.recommendedMode in ['in_person', 'online'])
+        && isOptionalString(data, 'convertedToCaseId', 128)
+        && isValidId(data.createdByUid)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidContactInquiry(data) {
+      return data.keys().hasAll([
+          'id', 'name', 'phone', 'specialtyId', 'message',
+          'createdByUid', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'name', 'phone', 'specialtyId', 'message',
+          'createdByUid', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isNonEmptyString(data.name, 2, 120)
+        && isValidJordanianPhone(data.phone)
+        && isValidSpecialty(data.specialtyId)
+        && isNonEmptyString(data.message, 3, 2000)
+        && isValidId(data.createdByUid)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // COLLECTION 1: /admins/{adminId} — Strictly Bootstrap/Admin Managed
+    // =========================================================================
+    match /admins/{adminId} {
+      allow get: if isVerified() && isValidId(adminId) && (isBootstrapAdmin() || request.auth.uid == adminId);
+      allow list: if isBootstrapAdmin();
+      allow create: if isVerified()
+        && isValidId(adminId)
+        && isValidAdminUser(incoming())
+        && incoming().uid == adminId
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+      allow update: if isVerified()
+        && isValidId(adminId)
+        && isValidAdminUser(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role', 'updatedAt'])
+        && isAdmin();
+      allow delete: if isVerified() && isValidId(adminId) && isBootstrapAdmin() && adminId != request.auth.uid;
+    }
+
+    // =========================================================================
+    // COLLECTION 2: /lawyers/{lawyerId} — Firm Attorneys & Roles
+    // =========================================================================
+    match /lawyers/{lawyerId} {
+      allow get: if isVerified() && isValidId(lawyerId) && (isAdmin() || isOwner(existing().createdByUid));
+      allow list: if isBootstrapAdmin() || (isVerified() && existing().createdByUid == request.auth.uid);
+      allow create: if isVerified()
+        && isValidId(lawyerId)
+        && isValidFirmLawyer(incoming())
+        && incoming().id == lawyerId
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+      allow update: if isVerified()
+        && isValidId(lawyerId)
+        && isValidFirmLawyer(incoming())
+        && incoming().id == existing().id
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin()
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['role', 'status', 'canManageRoles', 'specialties', 'name', 'nameEn', 'phone', 'email', 'updatedAt'])
+        );
+      allow delete: if isVerified() && isValidId(lawyerId) && isAdmin();
+    }
+
+    // =========================================================================
+    // COLLECTION 3: /cases/{caseId} — Client Legal Cases (PII Protected)
+    // =========================================================================
+    match /cases/{caseId} {
+      allow get: if isVerified() && isValidId(caseId) && (isAdmin() || isOwner(existing().createdByUid));
+      allow list: if isBootstrapAdmin() || (isVerified() && existing().createdByUid == request.auth.uid);
+      allow create: if isVerified()
+        && isValidId(caseId)
+        && isValidLegalCase(incoming())
+        && incoming().id == caseId
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isAdmin();
+      allow update: if isVerified()
+        && isValidId(caseId)
+        && isValidLegalCase(incoming())
+        && incoming().id == existing().id
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Tier 1: Admin full operational update (including overriding closed cases)
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly([
+            'stage', 'nextHearingDate', 'assignedLawyer', 'courtName', 'summary', 'specialtyId', 'updatedAt'
+          ])) ||
+          // Tier 2: Owner non-terminal hearing/summary update only when not closed
+          (isOwner(existing().createdByUid)
+            && existing().stage != 'closed'
+            && incoming().stage != 'closed'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['nextHearingDate', 'summary', 'updatedAt']))
+        );
+      allow delete: if isVerified() && isValidId(caseId) && isAdmin();
+    }
+
+    // =========================================================================
+    // COLLECTION 4: /bookings/{bookingId} — Consultation Bookings (PII Protected)
+    // =========================================================================
+    match /bookings/{bookingId} {
+      allow get: if isVerified() && isValidId(bookingId) && (isAdmin() || isOwner(existing().createdByUid));
+      allow list: if isBootstrapAdmin() || (isVerified() && existing().createdByUid == request.auth.uid);
+      allow create: if isVerified()
+        && isValidId(bookingId)
+        && isValidConsultationBooking(incoming())
+        && incoming().id == bookingId
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified()
+        && isValidId(bookingId)
+        && isValidConsultationBooking(incoming())
+        && incoming().id == existing().id
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Tier 1: Admin status, schedule, or attorney reassignment (can override terminal state)
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly([
+            'status', 'assignedLawyer', 'date', 'timeSlot', 'caseSummary', 'updatedAt'
+          ])) ||
+          // Tier 2: Booking creator can cancel only while booking is not in terminal state
+          (isOwner(existing().createdByUid)
+            && !(existing().status in ['completed', 'cancelled'])
+            && incoming().status == 'cancelled'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+        );
+      allow delete: if isVerified() && isValidId(bookingId) && isAdmin();
+    }
+
+    // =========================================================================
+    // COLLECTION 5: /intakes/{intakeId} — AI Al-Safi Summaries (PII Protected)
+    // =========================================================================
+    match /intakes/{intakeId} {
+      allow get: if isVerified() && isValidId(intakeId) && (isAdmin() || isOwner(existing().createdByUid));
+      allow list: if isBootstrapAdmin() || (isVerified() && existing().createdByUid == request.auth.uid);
+      allow create: if isVerified()
+        && isValidId(intakeId)
+        && isValidIntakeSummary(incoming())
+        && incoming().id == intakeId
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified()
+        && isValidId(intakeId)
+        && isValidIntakeSummary(incoming())
+        && incoming().id == existing().id
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['convertedToCaseId', 'urgency', 'documentsStatus', 'updatedAt']);
+      allow delete: if isVerified() && isValidId(intakeId) && isAdmin();
+    }
+
+    // =========================================================================
+    // COLLECTION 6: /inquiries/{inquiryId} — Contact Form Inquiries (PII Protected)
+    // =========================================================================
+    match /inquiries/{inquiryId} {
+      allow get: if isVerified() && isValidId(inquiryId) && (isAdmin() || isOwner(existing().createdByUid));
+      allow list: if isBootstrapAdmin() || (isVerified() && existing().createdByUid == request.auth.uid);
+      allow create: if isVerified()
+        && isValidId(inquiryId)
+        && isValidContactInquiry(incoming())
+        && incoming().id == inquiryId
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified()
+        && isValidId(inquiryId)
+        && isValidContactInquiry(incoming())
+        && incoming().id == existing().id
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['specialtyId', 'updatedAt']);
+      allow delete: if isVerified() && isValidId(inquiryId) && isAdmin();
+    }
+  }
+}

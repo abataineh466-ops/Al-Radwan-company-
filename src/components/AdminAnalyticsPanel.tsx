@@ -18,9 +18,9 @@ import type {
   IntakeSummary,
   Language,
   LegalCase,
-} from '../types/legal';
-import { SPECIALTIES } from '../data/firmContent';
-import { computeAdminFirmAnalytics, LAWYER_ROLE_META } from '../utils/adminAnalytics';
+} from '../types/legal.js';
+import { SPECIALTIES } from '../data/firmContent.js';
+import { computeAdminFirmAnalytics, LAWYER_ROLE_META } from '../utils/adminAnalytics.js';
 
 interface AdminAnalyticsPanelProps {
   lang: Language;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Lock, Menu, Scale, X } from 'lucide-react';
-import type { Language } from '../types/legal';
-import { UI_COPY } from '../data/firmContent';
+import type { Language } from '../types/legal.js';
+import { UI_COPY } from '../data/firmContent.js';
 
 interface NavbarProps {
   lang: Language;

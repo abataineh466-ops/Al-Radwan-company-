@@ -1,10 +1,10 @@
-import type { Language } from '../types/legal';
+import type { Language } from '../types/legal.js';
 import {
   buildDriveSearchQuery,
   formatSheetRange,
   parseGoogleApiError,
   type DriveFileFilter,
-} from '../utils/workspaceHelpers';
+} from '../utils/workspaceHelpers.js';
 
 export interface DriveFileItem {
   id: string;

@@ -10,8 +10,8 @@ import {
   formatDriveFileSize,
   formatSheetRange,
   parseGoogleApiError,
-} from './workspaceHelpers.ts';
-import type { ConsultationBooking, IntakeSummary, LegalCase } from '../types/legal.ts';
+} from './workspaceHelpers.js';
+import type { ConsultationBooking, IntakeSummary, LegalCase } from '../types/legal.js';
 
 test('WORKSPACE_SCOPES contains all 15 deduplicated Google Drive and Sheets scopes', () => {
   assert.equal(WORKSPACE_SCOPES.length, 15);

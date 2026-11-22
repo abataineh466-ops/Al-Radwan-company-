@@ -1,19 +1,23 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  Cloud,
   Eye,
   EyeOff,
   Globe,
+  Loader2,
   Lock,
   Scale,
   ShieldCheck,
   User,
 } from 'lucide-react';
-import type { Language } from '../types/legal';
-import { UI_COPY } from '../data/firmContent';
-import { verifyAdminCredentials } from '../utils/legalWorkflow';
+import type { Language } from '../types/legal.js';
+import { UI_COPY } from '../data/firmContent.js';
+import { verifyAdminCredentials } from '../utils/legalWorkflow.js';
+import { useFirebase } from '../context/FirebaseContext.js';
+import { BOOTSTRAP_ADMIN_EMAIL } from '../firebase.js';
 
 interface AdminLoginGateProps {
   lang: Language;
@@ -28,6 +32,16 @@ export function AdminLoginGate({
   onExitToPublic,
   onToggleLanguage,
 }: AdminLoginGateProps) {
+  const {
+    user,
+    authReady,
+    isFirebaseAdmin,
+    authLoading,
+    authError,
+    signInWithGoogle,
+    signOutFirebase,
+    clearAuthError,
+  } = useFirebase();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -35,9 +49,39 @@ export function AdminLoginGate({
 
   const BackIcon = lang === 'ar' ? ArrowRight : ArrowLeft;
 
+  useEffect(() => {
+    if (!authReady || !user) return;
+    if (isFirebaseAdmin) {
+      onLoginSuccess();
+    }
+  }, [authReady, user, isFirebaseAdmin, onLoginSuccess]);
+
+  async function handleGoogleLogin() {
+    setErrorMsg('');
+    clearAuthError();
+    const signedUser = await signInWithGoogle();
+    if (!signedUser) return;
+    if (
+      signedUser.emailVerified &&
+      signedUser.email?.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL
+    ) {
+      onLoginSuccess();
+      return;
+    }
+    if (!isFirebaseAdmin) {
+      setErrorMsg(
+        lang === 'ar'
+          ? 'هذا الحساب غير مدرج ضمن صلاحيات إدارة شركة الرضوان في Firebase. يرجى الدخول بحساب الإدارة المعتمد أو ببيانات المكتب.'
+          : 'This Google account is not authorized as a firm administrator in Firebase. Please sign in with the authorized admin account or use firm credentials.'
+      );
+      await signOutFirebase();
+    }
+  }
+
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMsg('');
+    clearAuthError();
 
     const formData = new FormData(e.currentTarget);
     const submittedUsername = username || String(formData.get('username') ?? '');
@@ -121,7 +165,33 @@ export function AdminLoginGate({
             </p>
           </div>
 
-          <div className="bg-white text-[#0B132B] rounded-2xl border border-[#C5A059]/30 shadow-2xl shadow-black/40 p-6 sm:p-8">
+          <div className="bg-white text-[#0B132B] rounded-2xl border border-[#C5A059]/30 shadow-2xl shadow-black/40 p-6 sm:p-8 space-y-5">
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={authLoading}
+              className="w-full min-h-[48px] px-4 py-2.5 rounded-xl bg-[#0B132B] hover:bg-[#14224a] disabled:opacity-60 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-colors cursor-pointer"
+            >
+              {authLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-[#C5A059]" aria-hidden="true" />
+              ) : (
+                <Cloud className="w-4 h-4 text-[#C5A059]" aria-hidden="true" />
+              )}
+              <span>
+                {lang === 'ar'
+                  ? 'الدخول بحساب Google (قاعدة بيانات Firebase السحابية)'
+                  : 'Sign In with Google (Firebase Cloud Database)'}
+              </span>
+            </button>
+
+            <div className="relative flex items-center justify-center">
+              <div className="border-t border-slate-200 w-full" />
+              <span className="bg-white px-3 text-[11px] font-semibold text-slate-400 whitespace-nowrap">
+                {lang === 'ar' ? 'أو الدخول ببيانات المكتب' : 'OR SIGN IN WITH FIRM CREDENTIALS'}
+              </span>
+              <div className="border-t border-slate-200 w-full" />
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
               <div>
                 <label
@@ -209,13 +279,13 @@ export function AdminLoginGate({
                 </div>
               </div>
 
-              {errorMsg && (
+              {(errorMsg || authError) && (
                 <div
                   role="alert"
                   className="rounded-xl bg-red-50 border border-red-200 px-3.5 py-3 flex items-start gap-2 text-xs sm:text-sm font-semibold text-red-800"
                 >
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>{errorMsg}</span>
+                  <span>{errorMsg || authError}</span>
                 </div>
               )}
 

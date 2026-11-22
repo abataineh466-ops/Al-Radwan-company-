@@ -464,12 +464,24 @@ async function generateIntakeReplyWithFallback(
   throw lastError ?? new Error('503 UNAVAILABLE');
 }
 
+export function cleanEnvValue(raw: string | undefined): string {
+  if (!raw) return '';
+  return raw.trim().replace(/^(['"])(.*)\1$/, '$2').trim();
+}
+
+export function normalizeTelegramToken(raw: string | undefined): string {
+  const cleaned = cleanEnvValue(raw);
+  return cleaned.startsWith('bot') && /^\d+:/.test(cleaned.slice(3))
+    ? cleaned.slice(3)
+    : cleaned;
+}
+
 async function forwardInquiryToTelegram(inquiry: ContactInquiry): Promise<{
   configured: boolean;
   delivered: boolean;
 }> {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim() ?? '';
-  const chatId = process.env.TELEGRAM_CHAT_ID?.trim() ?? '';
+  const botToken = normalizeTelegramToken(process.env.TELEGRAM_BOT_TOKEN);
+  const chatId = cleanEnvValue(process.env.TELEGRAM_CHAT_ID);
 
   if (!isValidTelegramBotToken(botToken) || !isValidTelegramChatId(chatId)) {
     return { configured: false, delivered: false };
@@ -583,12 +595,15 @@ export function createApiApp(): Express {
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/api/health', (_req, res) => {
-    const apiKey = process.env.GEMINI_API_KEY?.trim() ?? '';
+    const apiKey = cleanEnvValue(process.env.GEMINI_API_KEY);
+    const botToken = normalizeTelegramToken(process.env.TELEGRAM_BOT_TOKEN);
+    const chatId = cleanEnvValue(process.env.TELEGRAM_CHAT_ID);
     res.json({
       ok: true,
       service: 'rb-law-firm',
       runtime: process.env.VERCEL ? 'vercel-serverless' : 'node-server',
       geminiConfigured: Boolean(apiKey && apiKey !== 'MY_GEMINI_API_KEY'),
+      telegramConfigured: isValidTelegramBotToken(botToken) && isValidTelegramChatId(chatId),
     });
   });
 
@@ -1032,7 +1047,7 @@ export function createApiApp(): Express {
   });
 
   app.post('/api/intake-chat', async (req, res) => {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = cleanEnvValue(process.env.GEMINI_API_KEY);
     if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
       return res.status(503).json({
         error:

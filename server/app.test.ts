@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isAllowedCorsOrigin, normalizeVercelApiUrl } from './app.js';
+import {
+  cleanEnvValue,
+  isAllowedCorsOrigin,
+  normalizeTelegramToken,
+  normalizeVercelApiUrl,
+} from './app.js';
 
 test('normalizeVercelApiUrl restores flattened /api/index?__path=... routes cleanly', () => {
   assert.equal(normalizeVercelApiUrl('/api/index?__path=intake-chat'), '/api/intake-chat');
@@ -27,4 +32,13 @@ test('isAllowedCorsOrigin permits Vercel, Cloud Run, localhost, and configured c
   );
   assert.equal(isAllowedCorsOrigin('https://evil.example.com'), false);
   assert.equal(isAllowedCorsOrigin(undefined), false);
+});
+
+test('cleanEnvValue and normalizeTelegramToken strip accidental quotes, spaces, and bot prefix', () => {
+  assert.equal(cleanEnvValue(' "123456789" '), '123456789');
+  assert.equal(cleanEnvValue("'-1001234567890'"), '-1001234567890');
+  assert.equal(
+    normalizeTelegramToken('"bot123456789:ABCdefGHIjklMNOpqrsTUVwxyz123456"'),
+    '123456789:ABCdefGHIjklMNOpqrsTUVwxyz123456'
+  );
 });

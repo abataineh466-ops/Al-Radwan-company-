@@ -12,7 +12,7 @@ import type {
   LawyerStatus,
   LegalCase,
   SpecialtyId,
-} from '../src/types/legal';
+} from '../src/types/legal.js';
 import {
   buildTelegramSendMessagePayload,
   getConsultationFee,
@@ -366,6 +366,18 @@ function isTransientGeminiError(err: unknown): boolean {
   );
 }
 
+function isModelNotFoundError(err: unknown): boolean {
+  const raw = err instanceof Error ? err.message : String(err ?? '');
+  const status =
+    typeof err === 'object' && err !== null && 'status' in err
+      ? Number((err as { status?: unknown }).status)
+      : 0;
+  return status === 404 || /404|not_found|not found|no longer available/i.test(raw);
+}
+
+const DEFAULT_PRIMARY_MODEL = 'gemini-3.1-flash-lite';
+const DEFAULT_FALLBACK_MODEL = 'gemini-4-hydrogen';
+
 let flashLiteCooldownUntil = 0;
 
 async function generateIntakeReplyWithFallback(
@@ -373,23 +385,34 @@ async function generateIntakeReplyWithFallback(
   contents: ReturnType<typeof normalizeGeminiChatContents>,
   systemInstruction: string
 ) {
+  const configuredModel = process.env.GEMINI_MODEL?.trim();
   const flashLiteHealthy = Date.now() >= flashLiteCooldownUntil;
-    const attempts: Array<{
+
+  const baseAttempts: Array<{
     model: string;
     useLowThinking: boolean;
     timeoutMs: number;
     delayMs: number;
   }> = flashLiteHealthy
     ? [
-        { model: 'gemini-2.5-flash', useLowThinking: false, timeoutMs: 8500, delayMs: 0 },
-        { model: 'gemini-2.5-flash', useLowThinking: false, timeoutMs: 8500, delayMs: 350 },
-        { model: 'gemini-2.5-flash-lite', useLowThinking: false, timeoutMs: 9000, delayMs: 0 },
+        { model: DEFAULT_PRIMARY_MODEL, useLowThinking: false, timeoutMs: 8500, delayMs: 0 },
+        { model: DEFAULT_PRIMARY_MODEL, useLowThinking: false, timeoutMs: 8500, delayMs: 350 },
+        { model: DEFAULT_FALLBACK_MODEL, useLowThinking: true, timeoutMs: 9000, delayMs: 0 },
       ]
     : [
-        { model: 'gemini-2.5-flash-lite', useLowThinking: false, timeoutMs: 9000, delayMs: 0 },
-        { model: 'gemini-2.5-flash', useLowThinking: false, timeoutMs: 8500, delayMs: 350 },
+        { model: DEFAULT_FALLBACK_MODEL, useLowThinking: true, timeoutMs: 9000, delayMs: 0 },
+        { model: DEFAULT_PRIMARY_MODEL, useLowThinking: false, timeoutMs: 8500, delayMs: 350 },
       ];
 
+  const attempts =
+    configuredModel &&
+    configuredModel !== DEFAULT_PRIMARY_MODEL &&
+    configuredModel !== DEFAULT_FALLBACK_MODEL
+      ? [
+          { model: configuredModel, useLowThinking: false, timeoutMs: 8500, delayMs: 0 },
+          ...baseAttempts,
+        ]
+      : baseAttempts;
 
   let lastError: unknown = null;
 
@@ -427,16 +450,14 @@ async function generateIntakeReplyWithFallback(
           : 0;
       const isAbort =
         err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
-      if (
-        !isAbort &&
-        (status === 400 || status === 401 || status === 403 || !isTransientGeminiError(err))
-      ) {
+      const canFallback = isAbort || isTransientGeminiError(err) || isModelNotFoundError(err);
+      if (!canFallback || status === 400 || status === 401 || status === 403) {
         throw err;
       }
-      if (attempt.model === 'gemini-3.1-flash-lite') {
+      if (attempt.model === DEFAULT_PRIMARY_MODEL) {
         flashLiteCooldownUntil = Date.now() + 2 * 60 * 1000;
       }
-      console.warn(`Gemini model ${attempt.model} transiently unavailable, trying fallback...`);
+      console.warn(`Gemini model ${attempt.model} unavailable, trying fallback...`);
     }
   }
 

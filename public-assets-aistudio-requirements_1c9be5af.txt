@@ -1,0 +1,6 @@
+aiohttp==3.9.1
+cryptography==42.0.5
+python-dotenv==1.0.0
+aiohttp-cors==0.7.0
+uvicorn==0.25.0
+websockets==12.0

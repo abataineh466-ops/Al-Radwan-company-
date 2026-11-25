@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --rb-navy: #0B132B;
+    --rb-navy-deep: #070D1F;
+    --rb-charcoal: #141820;
+    --rb-gold: #C5A059;
+    --rb-gold-bright: #D4AF37;
+    --rb-ivory: #FAF8F3;
+    --font-ar: 'Cairo', system-ui, -apple-system, sans-serif;
+    --font-en-display: 'Cormorant Garamond', Georgia, serif;
+    --font-en-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono-nums: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--rb-ivory);
+    color: var(--rb-navy);
+  }
+
+  html[lang="ar"] body {
+    font-family: var(--font-ar);
+  }
+
+  html[lang="en"] body {
+    font-family: var(--font-en-body);
+  }
+
+  html[lang="en"] .font-display-en {
+    font-family: var(--font-en-display);
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-mono-data {
+    font-family: var(--font-mono-nums);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    body {
+      background: #ffffff !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
